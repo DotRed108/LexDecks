@@ -1,0 +1,38 @@
+.home-container {
+  --grower-min-width: 750px;
+	--giver-width: 350px;
+	--gap: 2.5svmin;
+	color: var(--default-text-color);
+  margin-top: var(--default-div-margin);
+}
+
+.study-dashboard {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 50%);
+	grid-template-rows: 70% 30%;
+	padding: 1.2em;
+	align-items: center;
+	border-radius: 6px;
+	background-color: var(--primary-bg);
+
+	--primary-text: var(--study-dashboard-text-color);
+}
+
+.multi-or-one-grid {
+	--gap: 2.5svmin;
+	--max-columns: 2;
+	--min-column-width: 300px;
+
+	--breakpoint: calc(var(--min-column-width) * var(--max-columns) + var(--gap) * (var(--max-columns) - 1));
+	--column-width: calc((100% / var(--max-columns)) - var(--gap));
+
+	display: grid;
+	gap: var(--gap);
+	grid-template-columns: repeat(auto-fit, minmax(min(max(var(--column-width), (100% - var(--breakpoint)) * -9999), 100%), 1fr));
+}
+
+.forecast-panel {
+	background-color: var(--white);
+	border-radius: 6px;
+	white-space-collapse: preserve;
+}

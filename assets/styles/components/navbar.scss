@@ -1,0 +1,100 @@
+h1 {
+	padding: 0;
+	justify-self: center;
+}
+
+.global-header {
+	z-index: 90;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	height: var(--header-height);
+	position: sticky;
+	top: 0;
+	padding: 0 calc(var(--global-margin)/2);
+	background-color: var(--white);
+	border-bottom: 1px solid #d5d5d5;
+	box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
+}
+
+.navbar {
+	grid-area: navbar;
+	text-align: center;
+}
+
+.navlist {
+	display: flex;
+	list-style-type: none;
+	margin-inline-start: 0;
+	margin-inline-end: 0;
+	margin-block-start: 0;
+	margin-block-end: 0;
+	padding-inline-start: 0;
+	align-items: center;
+}
+
+.navlist-element {
+	margin-left: 6ch;
+}
+
+.navlist-link {
+	text-decoration: none;
+	color: var(--default-text-color);
+}
+
+.nav-logo {
+	width: calc(var(--sign-in-link-and-logo-nav-width)/1.8);
+	height: auto;
+	object-fit: contain;
+}
+
+.logo-navigator {
+	box-sizing: border-box;
+	width: var(--sign-in-link-and-logo-nav-width);
+	height: auto;
+	border: 1px solid rgba(var(--off-white-rgb), 0);
+	font-size: var(--sign-in-link-and-logo-nav-font-size)
+}
+
+.sign-in-link {
+	box-sizing: border-box;
+	width: var(--sign-in-link-and-logo-nav-width);
+	transition: all 0.3s ease 0s;
+	font-family: var(--font-family-default);
+	font-size: var(--sign-in-link-and-logo-nav-font-size);
+	text-decoration: none;
+	text-align: center;
+	border-radius: 3px;
+	padding: 0.9svh 0;
+	border: 1px solid var(--winter3);
+	background-color: var(--winter3);
+	color: var(--white);
+	font-weight: 600;
+	text-shadow: var(--text-shadow-dark);
+}
+
+.sign-in-link:hover {
+	text-decoration: none;
+	outline: none;
+	outline-width: 0;
+	border: 1px solid var(--white);
+	box-shadow: 0 1px 1px var(--white);
+	cursor: pointer;
+}
+
+.sign-in-link:focus {
+	text-decoration: none;
+	outline: none;
+	outline-width: 0;
+	box-shadow: 0 1px 1px var(--white);
+}
+
+.header-pfp {
+	background-color: darkgray;
+	height: 80%;
+	aspect-ratio: 1/1;
+	object-fit: cover;
+	border-radius: 50%;
+	border: 3px solid var(--winter3);
+	cursor: pointer;
+}

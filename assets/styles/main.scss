@@ -1,0 +1,798 @@
+@import "fonts.scss";
+@import "components/navbar.scss";
+@import "variables.scss";
+@import "layout.scss";
+@import "home.scss";
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	padding: 0;
+	margin: 0;
+	color: var(--default-text-color);
+	font-family: var(--font-family-default);
+	background-color: #fffff9;
+}
+
+/*######################## BEGIN UTILITIES ######################## */
+/* BEGIN LAYOUT UTILS */
+
+/* END LAYOUT UTILS */
+
+.go-back-button {
+	cursor: pointer;
+	font-family: var(--font-family-default);
+	font-size: min(15px, var(--sign-in-element-font-size));
+	text-decoration: none;
+	text-align: center;
+	border-radius: 3px;
+	height: min(var(--sign-in-element-height), var(--sign-in-element-max-height));
+	transition: all 0.3s ease 0s;
+	border: 1px solid var(--mint);
+	background-color: var(--mint);
+	color: var(--white);
+	font-weight: 600;
+	text-shadow: var(--text-shadow-dark-4);
+	padding: 0 max(0.9svh, 2.5svmin);
+}
+
+.go-back-button:hover {
+	border: 1px solid var(--white);
+	box-shadow: 0 1px 1px var(--white);
+}
+
+.go-back-button:focus {
+	border: 1px solid var(--white);
+	box-shadow: 0 1px 1px var(--white);
+}
+
+.button-waiting {
+	opacity: 0.5;
+	cursor: none;
+	pointer-events: none;
+}
+
+.loading-symbol {
+	--border-color: var(--white);
+	--loading-symbol-border: calc(var(--sign-in-element-font-size) / 5) solid var(--border-color);
+	display: grid;
+	place-content: center;
+	border-radius: 50%;
+	height: var(--loading-symbol-diameter);
+	width: var(--loading-symbol-diameter);
+	background-color: transparent;
+	border: var(--loading-symbol-border);
+	box-shadow: var(--box-shadow-light);
+}
+
+.loading-symbol::after {
+	background-color: transparent;
+	content: "";
+	height: calc(var(--loading-symbol-diameter) / 5.25);
+	width: calc(var(--loading-symbol-diameter) / 5.25);
+	border-radius: 50%;
+	box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter3);
+	animation-name: loading, loading-colors;
+	animation-duration: 2000ms, 10000ms;
+	animation-direction: normal, normal;
+	animation-play-state: running, running;
+	animation-iteration-count: infinite, infinite;
+	animation-timing-function: linear, ease-in-out;
+}
+
+@keyframes loading {
+	30% {
+		rotate: calc(36deg * 5);
+	}
+
+	40% {
+		rotate: calc(36deg * 6.55);
+	}
+
+	50% {
+		rotate: calc(36deg * 7.85);
+	}
+
+	60% {
+		rotate: calc(36deg * 8.8);
+	}
+
+	70% {
+		rotate: calc(36deg * 9.4);
+	}
+
+	80% {
+		rotate: calc(36deg * 9.75);
+	}
+
+	90% {
+		rotate: calc(36deg * 9.9);
+	}
+
+	100% {
+		rotate: calc(36deg * 10);
+	}
+}
+
+@keyframes loading-colors {
+	0% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter3);
+	}
+
+	13% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter3);
+	}
+
+	20% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter2);
+	}
+
+	33% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter2);
+	}
+
+	40% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--red);
+	}
+
+	53% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--red);
+	}
+
+	60% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--mint);
+	}
+
+	73% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--mint);
+	}
+
+	80% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter4);
+	}
+
+	93% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter4);
+	}
+
+	100% {
+		box-shadow: 0 calc(var(--loading-symbol-diameter) / -2.07) 0 0 var(--winter3);
+	}
+}
+
+/*######################## END UTILITIES ######################## */
+/*######################## BEGIN GLOBAL HEADER ######################## */
+
+/*######################## END GLOBAL HEADER ######################## */
+/*######################## BEGIN HOME ######################## */
+
+/*######################## END HOME ######################## */
+/*######################## BEGIN LEVEL PROGRESS BAR ######################## */
+.progress-panel {
+	background-color: var(--grid-panel-background);
+	border-radius: 6px;
+}
+
+.progress-bar {
+	--progress-bar-height: 3em;
+	width: 100%;
+	max-width: 100%;
+	height: var(--progress-bar-height);
+	background-color: var(--progress-bar-background-color);
+	border-radius: 3em;
+	box-shadow: inset 0px 2px 0 0 var(--color-level-progress-bar-shadow);
+	color: var(--progress-bar-text-color);
+	position: relative;
+}
+
+.progress-bar::before {
+	background-color: var(--progress-bar-color);
+	border-radius: inherit;
+	text-overflow: clip;
+	display: inline-block;
+	position: static;
+	align-items: center;
+	align-content: center;
+	height: inherit;
+	min-width: var(--progress-bar-height);
+	max-width: 100%;
+	width: calc(var(--progress-pct, 0) * 1%);
+	content: "";
+}
+
+.progress-bar::after {
+	border-radius: inherit;
+	text-overflow: clip;
+	display: block;
+	white-space: nowrap;
+	position: absolute;
+	align-items: center;
+	transform: translate(50%, -200%);
+	height: auto;
+	content: attr(data-label);
+	color: var(--progress-bar-text-color);
+}
+
+/*######################## END LEVEL PROGRESS BAR ######################## */
+/*######################## BEGIN SIGN IN FORM ######################## */
+.sign-in-page-container {
+	display: grid;
+	font-family: var(--font-family-default);
+	background-color: var(--light-gray);
+	min-width: 100svw;
+	min-height: calc(100svh - var(--header-height));
+	place-content: center;
+}
+
+.sign-in-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	grid-template-rows: 1fr 1fr 1fr;
+	background-color: var(--white);
+	padding: var(--sign-in-container-padding);
+	gap: var(--sign-in-container-gap);
+	border-radius: 1svmin;
+}
+
+.sign-in-logo {
+	height: calc(var(--sign-in-element-height) * 3.2);
+	width: auto;
+	object-fit: cover;
+}
+
+.all-sign-in-inputs-container {
+	position: relative;
+}
+
+.common-sign-in {
+	--input-color: var(--light-gray);
+	font-family: var(--font-family-default);
+	font-size: min(var(--sign-in-element-pixel-size), var(--sign-in-element-font-size));
+	border: 1px solid var(--input-color);
+	background-color: var(--input-color);
+	text-decoration: none;
+	text-align: center;
+	border-radius: 3px;
+	height: var(--sign-in-element-height);
+	width: var(--sign-in-element-width);
+	max-height: var(--sign-in-element-max-height);
+	max-width: var(--sign-in-element-max-width);
+}
+
+.common-sign-in:hover {
+	text-decoration: none;
+	outline: none;
+	outline-width: 0;
+	box-shadow: 0 1px 1px var(--mint)
+}
+
+.common-sign-in:focus {
+	text-decoration: none;
+	outline: none;
+	outline-width: 0;
+	box-shadow: 0 1px 1px var(--mint);
+}
+
+.sign-in-email-input {
+	color: darkgray;
+}
+
+.sign-in-remember-input-container {
+	font-family: var(--font-family-default);
+	font-size: min(15px, 2svmax);
+	align-self: baseline;
+	position: absolute;
+	top: 110%;
+	color: darkgray;
+	accent-color: var(--winter3);
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.sign-in-remember-label {
+	cursor: pointer;
+}
+
+.sign-in-remember-input {
+	accent-color: var(--winter3);
+	cursor: pointer;
+	transform: scale(1.0);
+}
+
+.sign-in-button {
+	overflow: hidden;
+	position: relative;
+	transition: all 0.3s ease 0s;
+	border: 1px solid var(--winter3);
+	background-color: var(--winter3);
+	color: var(--white);
+	font-weight: 600;
+	text-shadow: var(--text-shadow-dark);
+}
+
+.sign-in-button:hover {
+	border: 1px solid var(--white);
+	box-shadow: 0 1px 1px var(--white);
+	cursor: pointer;
+}
+
+.sign-in-button:focus {
+	border: 1px solid var(--white);
+	box-shadow: 0 1px 1px var(--white);
+}
+
+.sign-in-button::before {
+	display: grid;
+	place-content: center;
+	height: var(--sign-in-element-height);
+	border: 1px solid rgba(var(--off-white-rgb), 0);
+	background-color: rgba(var(--off-white-rgb), 0);
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: var(--transform-for-in);
+	content: "";
+	animation-name: in-up;
+	animation-duration: var(--text-switch-duration);
+	animation-iteration-count: infinite;
+	animation-direction: normal;
+}
+
+.sign-in-button::after {
+	display: block;
+	position: absolute;
+	bottom: calc(var(--sign-in-element-height) + var(--sign-in-element-height)/10);
+	left: 55%;
+	/* border-radius: 10% 30% 10% 30%; */
+	/* border-left: calc(var(--sign-in-element-font-size) / 6) solid var(--white);
+	border-right: calc(var(--sign-in-element-font-size) / 6) solid var(--white); */
+	box-shadow: inset 1px 0 3px var(--white), inset -1px 0 3px var(--white), inset 0 5px 15px var(--mint), inset 0 -5px 15px var(--mint);
+	height: calc(var(--sign-in-element-height) * 3);
+	width: calc(var(--sign-in-element-font-size) + 6px);
+	content: "";
+	background: repeating-linear-gradient(45deg,
+			var(--white),
+			var(--white) 10px,
+			var(--winter3) 10px,
+			var(--winter3) 20px);
+	rotate: 5deg;
+	animation-name: in-up-cover;
+	animation-duration: var(--text-switch-duration);
+	animation-iteration-count: infinite;
+	animation-direction: normal;
+}
+
+@keyframes in-up {
+	0% {
+		content: "In";
+		opacity: 1;
+		transform: var(--transform-for-in);
+	}
+
+	37% {
+		content: "In";
+		opacity: 1;
+		transform: var(--transform-for-in);
+	}
+
+	38% {
+		content: "In";
+		opacity: 0;
+		transform: var(--transform-for-in);
+	}
+
+	39% {
+		content: "Up";
+		opacity: 0;
+		transform: var(--transform-for-up);
+	}
+
+	40% {
+		opacity: 1;
+		content: "Up";
+		transform: var(--transform-for-up);
+	}
+
+	87% {
+		content: "Up";
+		opacity: 1;
+		transform: var(--transform-for-up);
+	}
+
+	88% {
+		content: "Up";
+		opacity: 0;
+		transform: var(--transform-for-up);
+	}
+
+	89% {
+		content: "In";
+		opacity: 0;
+		transform: var(--transform-for-in);
+	}
+
+	90% {
+		content: "In";
+		opacity: 1;
+		transform: var(--transform-for-in);
+	}
+
+	100% {
+		content: "In";
+		opacity: 1;
+		transform: var(--transform-for-in);
+	}
+}
+
+@keyframes in-up-cover {
+	0% {
+		transform: translate(0, 0);
+	}
+
+	32% {
+		transform: translate(0, 0);
+	}
+
+	42% {
+		transform: translate(0, 50%);
+	}
+
+	45% {
+		transform: translate(0%, 50%);
+	}
+
+	50% {
+		transform: translate(0%, 145%);
+	}
+
+	82% {
+		transform: translate(0%, 145%);
+	}
+
+	92% {
+		transform: translate(0%, 90%);
+	}
+
+	95% {
+		transform: translate(0%, 90%);
+	}
+
+	100% {
+		transform: translate(0, 0);
+	}
+}
+
+.status-message-container {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	gap: 2ch;
+}
+
+.sign-in-status-message {
+	display: grid;
+	height: calc(var(--sign-in-element-height)*2);
+	max-height: calc(var(--sign-in-element-max-height)*2);
+	place-content: center;
+	border-radius: 3px;
+	pointer-events: none;
+	touch-action: none;
+	cursor: pointer;
+}
+
+#input-message-box {
+	display: none;
+}
+
+.invalid-input-message-box {
+	display: grid !important;
+	--triangle-size: 10px;
+	--invalid-message-box-height: calc(var(--sign-in-container-gap) * 0.6);
+	--invalid-message-box-width: calc(var(--sign-in-element-width) * 0.5);
+	--invalid-message-box-top: calc(var(--sign-in-container-gap) * -0.7);
+	--ivalid-message-box-right: calc(var(--sign-in-element-width) * .05);
+	color: var(--white);
+	border-radius: 5px;
+	box-shadow: var(--box-shadow-dark);
+	right: 0;
+	place-content: center;
+	background-color: var(--red);
+	top: var(--invalid-message-box-top);
+	position: absolute;
+	height: var(--invalid-message-box-height);
+	width: var(--invalid-message-box-width);
+	text-shadow: var(--text-shadow-dark);
+	animation-name: fade-in-out;
+	animation-duration: 2500ms;
+	opacity: 0;
+}
+
+.invalid-input-message-box::after {
+	display: inline-block;
+	background-color: transparent;
+	position: absolute;
+	border-left: var(--triangle-size) solid transparent;
+	border-right: var(--triangle-size) solid transparent;
+	border-top: var(--triangle-size) solid var(--red);
+	bottom: calc(var(--invalid-message-box-top) * 0.2);
+	right: calc(var(--ivalid-message-box-right) * 0.4);
+	width: 0;
+	height: 0;
+	content: "";
+}
+
+.invalid-input-message-box::before {
+	--size-reduction: 2px;
+	--new-size: calc(var(--triangle-size) - var(--size-reduction));
+	filter: drop-shadow(var(--box-shadow-dark));
+	background-color: transparent;
+	position: absolute;
+	border-left: var(--new-size) solid transparent;
+	border-right: var(--new-size) solid transparent;
+	border-top: var(--new-size) solid var(--winter3);
+	bottom: calc(var(--invalid-message-box-top) * 0.2);
+	right: calc(var(--ivalid-message-box-right) * 0.4 + var(--size-reduction));
+	content: "";
+}
+
+@keyframes fade-in-out {
+	0% {
+		opacity: 0;
+	}
+
+	20% {
+		opacity: 1;
+	}
+
+	70% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
+
+/*######################## END SIGN IN FORM ######################## */
+/*######################## BEGIN CREATE DECK PAGE ######################## */
+.create-deck-start-container {
+	--content-max-width: 130ch;
+	--breakout-max-width: 130ch;
+
+	display: grid;
+	place-content: center;
+	min-width: 100svw;
+	min-height: var(--min-page-height);
+}
+
+.create-deck-start-buttons-container {
+	--gap: var(--default-container-gap);
+	--max-columns: 4;
+	--min-column-width: 200px;
+
+	position: relative;
+	background-color: var(--winter3);
+	padding: var(--create-deck-start-container-padding);
+	border-top: 3svmin solid var(--winter2);
+	border-bottom: 3svmin solid var(--winter2);
+	/* box-shadow:  3svmin 3svmin 0 var(--white), -3svmin -3svmin 0 var(--white), 3svmin -3svmin 0 var(--white), -3svmin 3svmin 0 var(--white); */
+}
+
+/*######################## END CREATE DECK PAGE ######################## */
+/*######################## BEGIN IMPORT PAGE ######################## */
+.create-deck-import-container {
+	place-content: center;
+	min-height: var(--min-page-height);
+	row-gap: 2em;
+}
+
+/*######################## BEGIN IMPORT DRAG & DROP ######################## */
+#drop-area {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	height: min(200px, 26svmax);
+	width: 100%;
+	background-color: none;
+	border: 3px dashed var(--mint);
+	align-items: center;
+	gap: 0.8em;
+}
+
+.file-drop-icon {
+	margin-top: 0.6em;
+	height: 45%;
+	background-color: var(--winter2);
+}
+
+#drop-area p {
+	display: block;
+}
+
+.file-drop-loading-symbol {
+	height: 20%;
+}
+
+#anki-file-getter {
+	display: grid;
+	justify-content: center;
+}
+
+#anki-file-getter button {
+	color: var(--winter3);
+	background-color: var(--white);
+	padding-right: 1svmin;
+	padding-left: 1svmin;
+	border: 1px solid rgba(var(--winter3-rgb), 0.2);
+}
+
+/*######################## END IMPORT DRAG & DROP ######################## */
+/*######################## END IMPORT PAGE ######################## */
+/*######################## BEGIN EDITOR ######################## */
+.deck-list-container {
+	place-content: center;
+	min-height: var(--min-page-height);
+	row-gap: 2em;
+}
+
+.editor-container {
+	min-height: var(--min-page-height);
+	--content-max-width: 130ch;
+	--breakout-max-width: 140ch;
+}
+
+.editor-content {
+	--grower-min-width: 600px;
+	--giver-width: 300px;
+	--gap: 2.5svmin;
+}
+
+.editor-cards-holder {
+	height: 500px;
+	background-color: red;
+}
+
+.editor-deck-menu {
+	white-space-collapse: preserve;
+	height: 500px;
+	background-color: purple;
+}
+
+.editor-card-fields {
+	white-space-collapse: preserve;
+	width: max-content;
+	height: 500px;
+	background-color: burlywood;
+}
+
+/*######################## END EDITOR ######################## */
+/*######################## BEGIN COLORS ######################## */
+.red-bg {
+	background-color: var(--red);
+}
+
+.french-gray-bg {
+	background-color: var(--french-gray);
+}
+
+.blue-bg {
+	background-color: blue;
+}
+
+.green-bg {
+	background-color: green;
+}
+
+.yellow-bg {
+	background-color: yellow;
+}
+
+.gray-bg {
+	background-color: gray;
+}
+
+.winter3-bg {
+	background-color: var(--winter3);
+}
+
+.winter4-bg {
+	background-color: var(--winter4);
+}
+
+.mint-bg {
+	background-color: var(--mint);
+}
+
+.winter1-bg {
+	background-color: var(--winter1);
+}
+
+.winter2-bg {
+	background-color: var(--winter2);
+}
+
+.black-bg {
+	background-color: var(--midnight-black);
+}
+
+.off-white-bg {
+	background-color: var(--off-white);
+}
+
+.white-bg {
+	background-color: var(--white);
+}
+
+.light-gray-bg {
+	background-color: var(--light-gray);
+}
+
+.red {
+	color: var(--red);
+}
+
+.winter4 {
+	color: var(--winter4);
+}
+
+.winter3 {
+	color: var(--winter3);
+}
+
+.winter2 {
+	color: var(--winter2);
+}
+
+.winter1 {
+	color: var(--winter1);
+}
+
+.mint {
+	color: var(--mint);
+}
+
+.white {
+	color: var(--white);
+}
+
+.off-white {
+	color: var(--off-white);
+}
+
+.light-gray {
+	color: var(--light-gray);
+}
+
+.black {
+	color: var(--midnight-black);
+}
+
+/*######################## END COLORS ######################## */
+:root {
+	@media (max-height: 400px) or (max-width: 600px) {
+		.common-sign-in {
+			--input-color: var(--white);
+		}
+
+		.sign-in-container {
+			background-color: inherit;
+		}
+
+		.sign-in-remember-input {
+			transform: scale(0.8);
+		}
+
+		.loading-symbol {
+			--border-color: var(--light-gray);
+		}
+	}
+}

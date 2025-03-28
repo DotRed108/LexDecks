@@ -1,0 +1,107 @@
+:root {
+	--global-margin: 10vw;
+	--default-div-margin: calc(1vw + 1vh);
+	--default-text-color: #416163;
+	--white: #ffffff;
+	--white-rgb: 255, 255, 255;
+	--off-white: #F4F4F4;
+	--off-white-rgb: 244, 244, 244;
+	--light-gray: #eee;
+	--light-gray-rgb: 238, 238, 238;
+	--winter1: #C5FFF8;
+	--winter1-rgb: 197, 255, 248;
+	--winter2: #96EFFF;
+	--winter2-rgb: 150, 239, 255;
+	--winter3: #5FBDFF;
+	--winter3-rgb: 95, 189, 255;
+	--winter4: #7B66FF;
+	--winter4-rgb: 123, 102, 255;
+	--french-gray: #B5BEC6;
+	--purple: #8576FF;
+	--red: #FF0A23;
+	--red-rgb: 255, 10, 35;
+	--mint: #15F5BA;
+	--midnight-black: #25282B;
+	--midnight-black-rgb: 37, 40, 43;
+
+	--box-shadow-dark: 0 1px 1px rgba(var(--midnight-black-rgb), 0.4);
+	--box-shadow-dark2: -3px -3px 3px rgba(var(--midnight-black-rgb), 0.4);
+	--box-shadow-dark3: 2px 2px 3px rgba(var(--midnight-black-rgb), 0.4);
+	--box-shadow-light: 0 1px 1px rgba(var(--winter2-rgb), 0.6);
+	--box-shadow-light2: -3px -3px 10px rgba(var(--winter2-rgb), 0.6);
+	--text-shadow-dark: 0 1px 0 var(--text-shadow-dark-color);
+	--text-shadow-light: 0 1px 0 var(--text-shadow-light-color);
+	--text-shadow-light-soft: 0 1px 0 var(--text-shadow-light-color-soft);
+	--text-shadow-glow: 0 0 40px var(--text-shadow-light-color);
+	--text-shadow-dark-4: 0.05em 0 var(--text-shadow-dark-color), 0 0.05em var(--text-shadow-dark-color), -0.05em 0 var(--text-shadow-dark-color), 0 -0.05em var(--text-shadow-dark-color);
+	--text-shadow-light-4: 0.05em 0 var(--white), 0 0.05em var(--white), -0.05em 0 var(--white), 0 -0.05em var(--white);
+	--text-shadow-dark-blue-4: 0.05em 0 var(--text-shadow-dark-blue-color), 0 0.05em var(--text-shadow-dark-blue-color), -0.05em 0 var(--text-shadow-dark-blue-color), 0 -0.05em var(--text-shadow-dark-blue-color);
+	--text-shadow-light-color: #FFF;
+	--text-shadow-light-color-soft: rgba(255, 255, 255, 0.8);
+	--text-shadow-dark-color: rgba(0, 0, 0, 0.25);
+	--text-shadow-dark-blue-color: rgba(var(--winter4-rgb), 0.5);
+	--study-dashboard-text-color: #FFF;
+	--color-kanji: var(--mint);
+	--progress-bar-color: #F100A1;
+	--color-radical: var(--purple);
+	--progress-bar-background-color: #E0E0E0;
+	--color-level-progress-bar-shadow: rgba(0, 0, 0, 0.1);
+	--progress-bar-text-color: var(--default-text-color);
+	--color-button-modal-primary-background: #FFF;
+	--color-button-modal-primary-border: #FFF;
+
+	/* FONTS */
+	--font-family-default: "Noto Sans", "Noto Sans JP", "Noto Sans SC", sans-serif;
+	--font-weight-thin: 100;
+	--font-weight-extralight: 200;
+	--font-weight-light: 300;
+	--font-weight-regular: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+	--font-weight-extrabold: 800;
+	--font-weight-black: 900;
+	--font-size-xxsmall: 11px;
+	--font-size-xsmall: 14px;
+	--font-size-small: 16px;
+	--font-size-medium: 18px;
+	--font-size-large: 24px;
+	--font-size-xlarge: 28px;
+	--font-size-xxlarge: 38px;
+	--font-size-charater-large: 72px;
+
+	/* sizes */
+	--header-height: 7ch;
+	--min-page-height: calc(100svh - var(--header-height));
+	--sign-in-element-font-size: min(20px, 5svmin);
+	--sign-in-element-pixel-size: 18px;
+	--sign-in-element-max-height: 42px;
+	--sign-in-element-min-height: 8.5svmax;
+	--sign-in-element-height: min(var(--sign-in-element-min-height), var(--sign-in-element-max-height));
+	--sign-in-element-max-width: 320px;
+	--sign-in-element-min-width: 90svw;
+	--sign-in-element-width: min(var(--sign-in-element-min-width), var(--sign-in-element-max-width));
+	--sign-in-container-padding: 6svmin;
+	--logo-height: 120px;
+	--sign-in-container-gap: 6ch;
+	--sign-in-status-message-bottom-margin: min(var(--sign-in-element-height), var(--sign-in-element-max-height));
+	--sign-in-link-and-logo-nav-width: calc(max(0.9svh, 2.5svmin)*2 + 3.17em);
+	--sign-in-link-and-logo-nav-font-size: min(15px, var(--sign-in-element-font-size));
+	--transform-for-in: translate(45%, -50%);
+	--transform-for-up: translate(30%, -50%);
+	--loading-symbol-diameter: calc(var(--sign-in-element-font-size) * 3);
+	--basic-button-min-width: 30svw;
+	--basic-button-max-width: 300px;
+	--default-button-width: min(var(--basic-button-min-width), var(--basic-button-max-width));
+	--basic-button-min-height: 8.5svmax;
+	--basic-button-max-height: 42px;
+	--default-button-height: min(var(--basic-button-min-height), var(--basic-button-max-height));
+	--default-container-gap: 5ch;
+	--default-container-padding: 6svmin;
+	--create-deck-start-container-padding: var(--default-container-padding);
+	--default-border-radius: 1svmin;
+	--default-font-size: min(20px, 5svmin);
+
+	/* animations */
+	--text-switch-duration: 8000ms;
+}
