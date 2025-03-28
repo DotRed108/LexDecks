@@ -8,6 +8,7 @@ pub mod sign_in_lib;
 pub mod user_types;
 pub mod front_utils;
 pub mod db_and_cache;
+pub mod ui;
 
 pub fn proceed() {
     ()
