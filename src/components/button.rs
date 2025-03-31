@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use leptos::prelude::*;
+use leptos::{either::Either, prelude::*};
 
 use crate::utils_and_structs::ui::{Color, Shadow};
 
@@ -16,27 +16,30 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
     let bg = config.background_color.hex();
     let border_col = config.border_color.hex();
     let text_col = config.text_color.hex();
+    let padding = config.padding;
 
-    let this_button_styles = format!("
-    .{} {{
-        line-height: calc({} - var(--button-border-width) * 2);
-        background-color: {};
-        border-color: {};
-        color: {};
+    let mut this_button_styles = format!("
+    .{this_button} {{
+        line-height: calc({height} - var(--button-border-width) * 2);
+        background-color: {bg};
+        border-color: {border_col};
+        color: {text_col};
+        padding: {padding};
+        border-width: {border_width};
     }}
-    .{}:hover {{
-        background-color: {};
-        border-color: {};
-        color: {};
+    .{this_button}:hover {{
+        background-color: {bg};
+        border-color: {rgba_border_col};
+        color: {text_col};
+        padding: {padding};
+        border-width: {border_width};
     }}
-    ", this_button, config.css_height,
-     bg, border_col, text_col,
-    this_button, 
-    bg, config.text_color.rgba(30), text_col);
+    ", height=config.css_height, 
+    border_width=format!("calc({padding}/2)"),
+    rgba_border_col=config.text_color.rgba(30));
 
     let button_styles = "
         :root {
-            --button-padding: 0.5svw;
             --button-border-width: calc(var(--button-padding)/2);
         }
         .button {
@@ -46,9 +49,8 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
             text-decoration: none;
             text-align: center;
             border-radius: 3px;
-            padding: var(--button-padding);
-            border-width: var(--button-border-width);
             border-style: solid;
+            font-size: 1em;
         }
 
         .buttonwhat_da {
@@ -62,22 +64,32 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
             cursor: pointer;
         }
     ";
+    this_button_styles.push_str(button_styles);
 
     let mut classes = this_button.clone();
     classes.push(' ');
     classes.push_str("button");
     let mut font_weight = "400";
     config.bold.then(|| font_weight = "600");
+    
     view! {
-        <style>
-            {button_styles}
-        </style>
-        <style>
-            {this_button_styles}
-        </style>
-        <a class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
-            {config.text}
-        </a>
+        <style>{this_button_styles}</style>
+        {match config.link {
+            Some(link) => Either::Left(
+                view! {
+                    <a class=classes href=link style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                        {config.text}
+                    </a>
+                }
+            ),
+            None => Either::Right(
+                view! {
+                    <button class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                        {config.text}
+                    </button>
+                }
+            ),
+        }}
     }
 }
 
@@ -91,6 +103,8 @@ pub struct ButtonConfig {
     pub text_shadow: Shadow,
     pub box_shadow: Shadow,
     pub bold: bool,
+    pub link: Option<String>,
+    pub padding: String,
 }
 
 impl Default for ButtonConfig {
@@ -112,6 +126,8 @@ impl Default for ButtonConfig {
             text_shadow, 
             box_shadow,
             bold: true,
+            link: None,
+            padding: "calc(0.6ch + 0.3svw)".to_string(),
         }
     }
 }

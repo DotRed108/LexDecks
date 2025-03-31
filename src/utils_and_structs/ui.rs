@@ -84,6 +84,7 @@ pub enum Color {
     DarkSlate,
     #[default]
     White,
+    Jonquil,
 }
 
 impl Color {
@@ -92,15 +93,16 @@ impl Color {
             Color::Mint => "#15F5BA",
             Color::MidnightBlack => "#25282B",
             Color::FrenchGray => "#B5BEC6",
-            Color::Winter1 => "#eee",
+            Color::Winter1 => "#C5FFF8",
             Color::Winter2 => "#96EFFF",
             Color::Winter3 => "#5FBDFF",
             Color::Winter4 => "#7B66FF",
-            Color::Red => "#FF0A23",
+            Color::Red => "#A30B37",
             Color::LightGray => "#eee",
             Color::OffWhite => "#F4F4F4",
             Color::DarkSlate => "#416163",
-            Color::White => "#ffffff",
+            Color::White => "#FFFFFF",
+            Color::Jonquil => "#F9C80E",
         };
         hex.to_string()
     }
@@ -119,6 +121,7 @@ impl Color {
             Color::OffWhite => "244, 244, 244",
             Color::DarkSlate => "65, 97, 99",
             Color::White => "255, 255, 255",
+            Color::Jonquil => "249, 200, 14",
         };
         rgb.to_string()
     }

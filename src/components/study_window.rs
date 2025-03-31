@@ -47,6 +47,7 @@ pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
         padding: var(--gap);
         border-radius: 6px;
         box-shadow: {light};
+        /* max-height: 15em; currently overflows at certain browser sizes */
     }}
     .lesson-window {{
         background-color: {winter4};
@@ -65,6 +66,7 @@ pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
     .study-window-title-description-container {{
         display: flex;
         flex-direction: column;
+        gap: 0.5em;
         height: 100%;
     }}
     .study-window-title {{
