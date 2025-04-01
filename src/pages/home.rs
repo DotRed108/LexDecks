@@ -1,16 +1,21 @@
 use leptos::prelude::*;
+use leptos_icons::Icon;
 use leptos_use::utils::Pausable;
 use leptos_use::{use_interval_fn, use_timestamp};
 use leptos::web_sys::js_sys;
+use strum::Display;
 
 use crate::components::message_box::MessageBox;
 use crate::components::study_window::{StudyWindow, StudyType};
+use crate::utils_and_structs::database_types::DeckId;
+use crate::utils_and_structs::front_utils::get_fake_review_schedule;
 use crate::utils_and_structs::shared_truth::CALENDAR_BG;
-use crate::utils_and_structs::ui::Color;
+use crate::utils_and_structs::ui::{Color, Shadow};
 
 /// Renders the home page of your application.
 #[component]
 pub fn Home() -> impl IntoView {
+    let current_deck = RwSignal::new(DeckId::default());
     view! {
         <MessageBox/>
         <div class="content-flex home-container">
@@ -20,13 +25,14 @@ pub fn Home() -> impl IntoView {
             </div>
             <div class="ka chow giver black-bg">
             </div>
-            <Calendar/>
+            <Calendar current_deck/>
         </div>
     }
 }
 
 #[component]
-pub fn Calendar() -> impl IntoView {
+pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
+    let review_schedule = get_fake_review_schedule(current_deck.get());
     let utc_date_on_init = Date::now();
     let todays_date = RwSignal::new(utc_date_on_init);
     let dates = RwSignal::new(utc_date_on_init.get_3_calendar_months());
@@ -64,27 +70,27 @@ pub fn Calendar() -> impl IntoView {
     }, 300000);
     
     let output_dates = move |date: Date, which_month: CalendarState| {
-        let display = if date == Date::NO_DISPLAY {"none"} else {"inherit"};
         let classes = format!("calendar-day {} {} {}", date.day, date.day_of_week, date.month.to_string());
-        
-        let dont_display = move || {
-            if dates.get().currently_displayed == which_month {
-                false
+
+        let focus_month = move |dates: ThreeCalendarMonths| {
+            if dates.currently_displayed_month == date.month {
+                "100%"
             } else {
-                true
+                "30%"
             }
         };
 
-        let focus_month = move || {
-            if dates.get().currently_displayed_month == date.month {
-                true
+        let display = move |dates: ThreeCalendarMonths| {
+            if date == Date::NO_DISPLAY {return "none";};
+            if dates.currently_displayed == which_month {
+                return "block";
             } else {
-                false
+                return "none";
             }
         };
-        
+
         view! {
-            <li class=classes style:display=display class:no-display=dont_display style:opacity="30%" class:opaque=focus_month>
+            <li class=classes style=("display", move || {display(dates.get())})  style=("opacity", move || {focus_month(dates.get())})>
                 {date.day.to_string()}
             </li>
         }
@@ -96,8 +102,6 @@ pub fn Calendar() -> impl IntoView {
     let next_month = {move |date: Date|  output_dates(date, CalendarState::NextMonth)};
 
     let write_styles = move || {
-        let three_months = dates.get();
-
         format!("
         .no-display {{
             display: none !important;
@@ -106,6 +110,7 @@ pub fn Calendar() -> impl IntoView {
             opacity: 100% !important;
         }}
         .calendar-container {{
+            --calendar-item-height: 2.5em;
             --calendar-padding: 2.5ch;
             background-color: transparent;
             display: flex;
@@ -119,7 +124,6 @@ pub fn Calendar() -> impl IntoView {
             background-size: 100%;
         }}
         .calendar {{
-            --calendar-item-height: 2.5em;
             width: 100%;
             background-color: transparent;
             display: grid;
@@ -130,8 +134,8 @@ pub fn Calendar() -> impl IntoView {
         }}
         .calendar-day {{
             --border-width: 2px;
-            background-color: {clndr_day_color};
-            border-color: {cldr_day_border_color};
+            background-color: {off_white};
+            border-color: {winter2};
             border-style: solid;
             border-width: var(--border-width);
             height: var(--calendar-item-height);
@@ -139,23 +143,40 @@ pub fn Calendar() -> impl IntoView {
             border-radius: 50%;
             text-align: center;
             line-height: calc(var(--calendar-item-height) - var(--border-width) * 2);
-            color: {clndr_day_text_color};
+            color: {midnight};
         }}
         .calendar-label {{
-            background-color: {clndr_label_color};
+            background-color: {dark_slate};
             height: var(--calendar-item-height);
             width: var(--calendar-item-height);
             border-radius: 50%;
             text-align: center;
             line-height: var(--calendar-item-height);
             font-weight: 600;
-            color: {label_color};
+            color: {white};
         }}
-        ", clndr_day_color = Color::OffWhite.hex(),
-        clndr_label_color=Color::DarkSlate.hex(),
-        label_color=Color::White.hex(),
-        cldr_day_border_color=Color::Winter2.hex(),
-        clndr_day_text_color=Color::MidnightBlack.hex(),
+        .calendar-button {{
+            color: {winter4};
+            text-shadow: {dark_shadow};
+            font-weight: bold;
+            border-radius: 50%;
+            font-size: var(--calendar-item-height);
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }}
+        .calendar-button:hover {{
+            background-color: rgba(var(--winter2-rgb), 0.5);
+            cursor: pointer;
+        }}
+        ", off_white = Color::OffWhite.hex(),
+        dark_slate=Color::DarkSlate.hex(),
+        white=Color::White.hex(),
+        winter2=Color::Winter2.hex(),
+        winter4=Color::Winter4.hex(),
+        midnight=Color::MidnightBlack.hex(),
+        // yellow=Color::Jonquil.hex(),
+        dark_shadow=Shadow::dark().css(),
     )};
 
     let create_days_of_week = |day_of_week: u32| {
@@ -196,10 +217,10 @@ pub fn Calendar() -> impl IntoView {
            {move || write_styles}
         </style>
         <div class="calendar-container">
-            <div style:display="flex" style:flex-direction="row" style:align-items="center">
-                <div on:click=goto_last_month class="previous_month">"previous"</div>
+            <div style:user-select="none" style:width="100%" style:display="flex" style:flex-direction="row" style:align-items="center" style:justify-content="space-around">
+                <Icon icon={icondata::LuArrowLeftCircle} {..} class="calendar-button" on:click=goto_last_month/>
                 <h2 style:font-size="2.2em">{move || dates.get().currently_displayed_month.to_string()}</h2>
-                <div on:click=goto_next_month class="future_month">"future"</div>
+                <Icon icon={icondata::LuArrowRightCircle} {..} class="calendar-button" on:click=goto_next_month/>
             </div>
             <ol class="calendar">
                 {move || (1..=7_u32).map(create_days_of_week).into_iter().collect::<Vec<_>>()}
@@ -212,13 +233,13 @@ pub fn Calendar() -> impl IntoView {
 }
 
 #[derive(Clone, Copy)]
-struct ThreeCalendarMonths {
-    last_month: [Date; Date::MAX_CALENDAR_DATES],
-    this_month: [Date; Date::MAX_CALENDAR_DATES],
-    next_month: [Date; Date::MAX_CALENDAR_DATES],
+pub struct ThreeCalendarMonths {
+    pub last_month: [Date; Date::MAX_CALENDAR_DATES],
+    pub this_month: [Date; Date::MAX_CALENDAR_DATES],
+    pub next_month: [Date; Date::MAX_CALENDAR_DATES],
 
-    currently_displayed: CalendarState,
-    currently_displayed_month: Month,
+    pub currently_displayed: CalendarState,
+    pub currently_displayed_month: Month,
 }
 
 impl ThreeCalendarMonths {
@@ -253,15 +274,15 @@ impl ThreeCalendarMonths {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum CalendarState {
+#[derive(Clone, Copy, PartialEq, Display)]
+pub enum CalendarState {
     LastMonth,
     ThisMonth,
     NextMonth,
 }
 
 #[derive(Clone, Copy, PartialEq)]
-struct Date {
+pub struct Date {
     month: Month,
     day: usize,
     year: usize,
@@ -389,7 +410,7 @@ impl Date {
 
     const UNIX_EPOCH: Date = Date {month: Date::MONTHS[0], day: 1, year: 1970, day_of_week: 5}; 
 
-    const MAX_CALENDAR_DATES: usize = 42;
+    pub const MAX_CALENDAR_DATES: usize = 42;
 
     pub fn now() -> Date {
         let epoch = Date::UNIX_EPOCH;
@@ -453,7 +474,7 @@ impl Date {
         let month2 = self.get_calendar_grid_of_month();
         let month3 = self.get_first_day_of_next_month().get_calendar_grid_of_month();
 
-        ThreeCalendarMonths {last_month: month1, this_month: month2, next_month: month3, currently_displayed: CalendarState::ThisMonth,currently_displayed_month: self.month}
+        ThreeCalendarMonths {last_month: month1, this_month: month2, next_month: month3, currently_displayed: CalendarState::ThisMonth, currently_displayed_month: self.month}
     }
 }
 
@@ -479,7 +500,7 @@ impl ToString for Date {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-struct Month {
+pub struct Month {
     index: usize,
     days: usize,
 }

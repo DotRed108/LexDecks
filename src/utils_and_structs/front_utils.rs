@@ -1,4 +1,6 @@
-use super::database_types::DeckList;
+use crate::pages::home::Date;
+
+use super::database_types::{DeckId, DeckList};
 use super::outcomes::Outcome;
 use super::queries::ValidQueryTypes;
 use super::shared_truth::{
@@ -347,4 +349,16 @@ pub fn frontend_query_validation(query: &ValidQueryTypes, valid_decks: DeckList)
         _ => return Outcome::InvalidRequest,
     }
     Outcome::PermissionGranted("Query Likely Valid".to_string())
+}
+
+pub fn get_fake_review_schedule(_deck_id: DeckId) -> [usize; Date::MAX_CALENDAR_DATES * 3] {
+    let mut fake_review_schedule = [0; Date::MAX_CALENDAR_DATES * 3];
+    fake_review_schedule[10] = 10;
+    fake_review_schedule[21] = 3;
+    fake_review_schedule[46] = 7;
+    fake_review_schedule[102] = 44;
+    fake_review_schedule[55] = 37;
+    fake_review_schedule[75] = 21;
+    fake_review_schedule[102] = 5;
+    return fake_review_schedule
 }
