@@ -1,4 +1,6 @@
-use crate::pages::home::Date;
+use std::collections::HashMap;
+
+use crate::pages::home::{Date, PartialDate};
 
 use super::database_types::{DeckId, DeckList};
 use super::outcomes::Outcome;
@@ -351,14 +353,17 @@ pub fn frontend_query_validation(query: &ValidQueryTypes, valid_decks: DeckList)
     Outcome::PermissionGranted("Query Likely Valid".to_string())
 }
 
-pub fn get_fake_review_schedule(_deck_id: DeckId) -> [usize; Date::MAX_CALENDAR_DATES * 3] {
-    let mut fake_review_schedule = [0; Date::MAX_CALENDAR_DATES * 3];
-    fake_review_schedule[10] = 10;
-    fake_review_schedule[21] = 3;
-    fake_review_schedule[46] = 7;
-    fake_review_schedule[102] = 44;
-    fake_review_schedule[55] = 37;
-    fake_review_schedule[75] = 21;
-    fake_review_schedule[102] = 5;
-    return fake_review_schedule
+pub fn get_fake_review_schedule(_deck_id: DeckId) -> (HashMap<PartialDate, usize>, usize) {
+    let mut fake_review_schedule = HashMap::with_capacity(Date::JAN.days(1970) * 3);
+
+    fake_review_schedule.insert(PartialDate::day_and_month(2, Date::MAR), 10);
+    fake_review_schedule.insert(PartialDate::day_and_month(30, Date::MAR), 3);
+    fake_review_schedule.insert(PartialDate::day_and_month(1, Date::APR), 7);
+    fake_review_schedule.insert(PartialDate::day_and_month(16, Date::APR), 37);
+    fake_review_schedule.insert(PartialDate::day_and_month(17, Date::APR), 21);
+    fake_review_schedule.insert(PartialDate::day_and_month(6, Date::MAY), 5);
+
+    let highest_review_amount = 37;
+
+    return (fake_review_schedule, highest_review_amount)
 }

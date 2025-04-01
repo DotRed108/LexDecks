@@ -18,6 +18,7 @@ impl Shadow {
             horizontal_offset: horizontal_offset.to_string(),
             vertical_offset: vertical_offset.to_string(),
             blur_radius: blur_radius.to_string(),
+            color_intensity: 100,
             ..Default::default()
         }
     }
@@ -35,13 +36,25 @@ impl Shadow {
         return dark_shadow;
     }
 
+    pub fn add_shadow(&mut self, new_shadow: Shadow) -> Shadow {
+        match &self.shadow {
+            Some(box_of_shadow) => {
+                let mut old_shadow = box_of_shadow.clone();
+                self.shadow = Some(Box::new(old_shadow.add_shadow(new_shadow)));
+            },
+            None => {self.shadow = Some(Box::new(new_shadow));},
+        }
+
+        return self.clone()
+    }
+
     pub fn css(&self) -> String {
         let mut css = if self.inset {
             "inset ".to_string()
         } else {
             "".to_string()
         };
-        css.push_str(&format!("{} {} {} {}",self.horizontal_offset, self.vertical_offset, self.blur_radius, self.color.rgba(self.color_intensity)));
+        css.push_str(&format!("{} {} {} {} {}",self.horizontal_offset, self.vertical_offset, self.blur_radius, self.spread_radius, self.color.rgba(self.color_intensity)));
         
         let shadow = match self.shadow.clone() {
             Some(bubububox) => *bubububox,
@@ -58,7 +71,7 @@ impl Default for Shadow {
     fn default() -> Self {
         Self { 
             color: Default::default(), 
-            color_intensity: Default::default(), 
+            color_intensity: 100, 
             inset: Default::default(),
             horizontal_offset: Default::default(),
             vertical_offset: Default::default(),

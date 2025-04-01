@@ -3,6 +3,7 @@ use leptos_icons::Icon;
 use leptos_use::utils::Pausable;
 use leptos_use::{use_interval_fn, use_timestamp};
 use leptos::web_sys::js_sys;
+use partial_derive::Partial;
 use strum::Display;
 
 use crate::components::message_box::MessageBox;
@@ -32,11 +33,12 @@ pub fn Home() -> impl IntoView {
 
 #[component]
 pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
-    let review_schedule = get_fake_review_schedule(current_deck.get());
     let utc_date_on_init = Date::now();
     let todays_date = RwSignal::new(utc_date_on_init);
     let dates = RwSignal::new(utc_date_on_init.get_3_calendar_months());
+    let selected_date = RwSignal::new(utc_date_on_init);
     
+
     let call_effect = RwSignal::new(0);
     Effect::new(move |last_run| {
         call_effect.get();
@@ -51,6 +53,7 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
 
         if date_on_last_run != current_date {
             todays_date.set(current_date);
+            selected_date.set(current_date);
         }
         if date_on_last_run.month != current_date.month {
             dates.set(current_date.get_3_calendar_months());
@@ -70,7 +73,38 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
     }, 300000);
     
     let output_dates = move |date: Date, which_month: CalendarState| {
-        let classes = format!("calendar-day {} {} {}", date.day, date.day_of_week, date.month.to_string());
+        let classes = format!("calendar-day {} {} {}", date.get_day_of_week(), date.day, date.month.to_string());
+
+        let bg_color = Color::OffWhite;
+
+        let apply_heat = move |deck_id: DeckId| {
+            let (schedule, highest_reviews) = get_fake_review_schedule(deck_id);
+            let review_count = *schedule.get(&date.to_month_and_day()).unwrap_or(&0);
+
+            
+
+            let mut box_shadow = Shadow::dark();
+            if review_count > 0 {
+                let fill_unit_css = "em";
+                let max_fill_size = 1.2;
+                let prcnt_filled = review_count as f64 / highest_reviews as f64;
+                let amount_of_fill = max_fill_size - prcnt_filled * max_fill_size;
+
+
+                let mut progress_shadow = Shadow::new(bg_color, 0, 0, "2px");
+                progress_shadow.inset = true;
+                progress_shadow.spread_radius = format!("{amount_of_fill}{fill_unit_css}");
+
+                let mut progress_shadow_bg = Shadow::new(Color::Mint, 0, 0, 0);
+                progress_shadow_bg.inset = true;
+                progress_shadow_bg.spread_radius = format!("{max_fill_size}{fill_unit_css}");
+                
+                box_shadow.add_shadow(progress_shadow);
+                box_shadow.add_shadow(progress_shadow_bg);
+            }
+
+            box_shadow.css()
+        };
 
         let focus_month = move |dates: ThreeCalendarMonths| {
             if dates.currently_displayed_month == date.month {
@@ -90,7 +124,10 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
         };
 
         view! {
-            <li class=classes style=("display", move || {display(dates.get())})  style=("opacity", move || {focus_month(dates.get())})>
+            <li class=classes class=("selected", move || selected_date.get() == date) 
+            style=("display", move || {display(dates.get())})  style=("opacity", move || {focus_month(dates.get())}) 
+            style=("box-shadow", move || {apply_heat(current_deck.get())}) style:background-color=bg_color.hex() 
+            on:click=move |_| selected_date.set(date)>
                 {date.day.to_string()}
             </li>
         }
@@ -101,7 +138,7 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
     let this_month = {move |date: Date|  output_dates(date, CalendarState::ThisMonth)};
     let next_month = {move |date: Date|  output_dates(date, CalendarState::NextMonth)};
 
-    let write_styles = move || {
+    let styles = 
         format!("
         .no-display {{
             display: none !important;
@@ -134,7 +171,6 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
         }}
         .calendar-day {{
             --border-width: 2px;
-            background-color: {off_white};
             border-color: {winter2};
             border-style: solid;
             border-width: var(--border-width);
@@ -144,6 +180,13 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
             text-align: center;
             line-height: calc(var(--calendar-item-height) - var(--border-width) * 2);
             color: {midnight};
+        }}
+        .calendar-day:hover {{
+            cursor: pointer;
+            border-color: {winter3};
+        }}
+        .selected {{
+            border-color: {winter4} !important;
         }}
         .calendar-label {{
             background-color: {dark_slate};
@@ -156,7 +199,7 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
             color: {white};
         }}
         .calendar-button {{
-            color: {winter4};
+            color: {winter3};
             text-shadow: {dark_shadow};
             font-weight: bold;
             border-radius: 50%;
@@ -169,15 +212,14 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
             background-color: rgba(var(--winter2-rgb), 0.5);
             cursor: pointer;
         }}
-        ", off_white = Color::OffWhite.hex(),
-        dark_slate=Color::DarkSlate.hex(),
+        ", dark_slate=Color::DarkSlate.hex(),
         white=Color::White.hex(),
-        winter2=Color::Winter2.hex(),
         winter4=Color::Winter4.hex(),
         midnight=Color::MidnightBlack.hex(),
-        // yellow=Color::Jonquil.hex(),
+        winter2=Color::Winter2.hex(),
+        winter3=Color::Winter3.hex(),
         dark_shadow=Shadow::dark().css(),
-    )};
+    );
 
     let create_days_of_week = |day_of_week: u32| {
         let heading = match day_of_week {
@@ -212,15 +254,23 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
         dates.set(current_3_calendar);
     };
 
+    let hide_button = move |calendar_state| {
+        if calendar_state == CalendarState::LastMonth {
+            "hidden"
+        } else {
+            "block"
+        }
+    };
+
     view! {
         <style>
-           {move || write_styles}
+           {styles}
         </style>
         <div class="calendar-container">
             <div style:user-select="none" style:width="100%" style:display="flex" style:flex-direction="row" style:align-items="center" style:justify-content="space-around">
-                <Icon icon={icondata::LuArrowLeftCircle} {..} class="calendar-button" on:click=goto_last_month/>
-                <h2 style:font-size="2.2em">{move || dates.get().currently_displayed_month.to_string()}</h2>
-                <Icon icon={icondata::LuArrowRightCircle} {..} class="calendar-button" on:click=goto_next_month/>
+                <Icon icon={icondata::LuArrowLeftCircle} {..}  class="calendar-button" on:click=goto_last_month/>
+                <h2 style=("display", move || hide_button(dates.get().currently_displayed)) style:font-size="var(--calendar-item-height)">{move || dates.get().currently_displayed_month.to_string()}</h2>
+                <Icon icon={icondata::LuArrowRightCircle} {..} style=("display", move || hide_button(dates.get().currently_displayed)) class="calendar-button" on:click=goto_next_month/>
             </div>
             <ol class="calendar">
                 {move || (1..=7_u32).map(create_days_of_week).into_iter().collect::<Vec<_>>()}
@@ -281,15 +331,43 @@ pub enum CalendarState {
     NextMonth,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Partial)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Date {
-    month: Month,
-    day: usize,
-    year: usize,
-    day_of_week: usize,
+    pub month: Month,
+    pub day: usize,
+    pub year: usize,
+    pub day_of_week: usize,
+}
+
+impl PartialDate {
+    pub fn day_and_month(day: usize, month: Month) -> PartialDate {
+        PartialDate { month: Some(month), day: Some(day), year: None, day_of_week: None }
+    }
+}
+
+impl Default for Date {
+    fn default() -> Self {
+        Self::UNIX_EPOCH
+    }
+}
+
+impl From<PartialDate> for Date {
+    fn from(value: PartialDate) -> Self {
+        Self { 
+            month: value.month.unwrap_or(Month::new(15, 0)), 
+            day: value.day.unwrap_or_default(), 
+            year: value.year.unwrap_or_default(), 
+            day_of_week: value.day_of_week.unwrap_or(9),
+        }
+    }
 }
 
 impl Date {
+    pub fn to_month_and_day(&self) -> PartialDate {
+        PartialDate { month: Some(self.month), day: Some(self.day), year: None, day_of_week: None }
+    }
+
     pub fn get_advance_by(&self, day_count: usize) -> Date {
         let mut date = self.clone();
         
@@ -390,7 +468,7 @@ impl Date {
         self.get_advance_by(number_of_days_to_advance).get_first_day_of_month()
     }
 
-    const MONTHS: [Month; 12] = 
+    pub const MONTHS: [Month; 12] = 
     [
         Month { index: 1, days: 31 },
         Month { index: 2, days: 28 },
@@ -406,9 +484,22 @@ impl Date {
         Month { index: 12, days: 31 },
     ];
 
-    const NO_DISPLAY: Date = Date {month: Month { index: 13, days: 45 }, day: 0, year: 0, day_of_week: 8};
+    pub const JAN: Month = Date::MONTHS[0];
+    pub const FEB: Month = Date::MONTHS[1];
+    pub const MAR: Month = Date::MONTHS[2];
+    pub const APR: Month = Date::MONTHS[3];
+    pub const MAY: Month = Date::MONTHS[4];
+    pub const JUN: Month = Date::MONTHS[5];
+    pub const JUL: Month = Date::MONTHS[6];
+    pub const AUG: Month = Date::MONTHS[7];
+    pub const SEP: Month = Date::MONTHS[8];
+    pub const OCT: Month = Date::MONTHS[9];
+    pub const NOV: Month = Date::MONTHS[10];
+    pub const DEC: Month = Date::MONTHS[11];
 
-    const UNIX_EPOCH: Date = Date {month: Date::MONTHS[0], day: 1, year: 1970, day_of_week: 5}; 
+    pub const NO_DISPLAY: Date = Date {month: Month { index: 13, days: 45 }, day: 0, year: 0, day_of_week: 8};
+
+    pub const UNIX_EPOCH: Date = Date {month: Date::MONTHS[0], day: 1, year: 1970, day_of_week: 5}; 
 
     pub const MAX_CALENDAR_DATES: usize = 42;
 
@@ -445,6 +536,7 @@ impl Date {
             6 => "Friday",
             7 => "Saturday",
             8 => "NoDisplay",
+            9 => "Unknown",
             _ => "Error",
         };
 
@@ -499,7 +591,7 @@ impl ToString for Date {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Month {
     index: usize,
     days: usize,
