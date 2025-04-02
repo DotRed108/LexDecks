@@ -199,7 +199,7 @@ impl Date {
         }
 
         if self.day < other_date.day {
-            return false;
+            return true;
         }
 
         false

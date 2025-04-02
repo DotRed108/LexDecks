@@ -15,9 +15,16 @@ pub fn Home() -> impl IntoView {
                 <StudyWindow study_type=StudyType::Lesson/>
                 <StudyWindow study_type=StudyType::Review/>
             </div>
-            <div class="ka chow giver black-bg">
-            </div>
+            <DeckSelector/>
             <Calendar current_deck/>
+        </div>
+    }
+}
+
+#[component]
+pub fn DeckSelector() -> impl IntoView {
+    view! {
+        <div class="ka chow giver black-bg">
         </div>
     }
 }
