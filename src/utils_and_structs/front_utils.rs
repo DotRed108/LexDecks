@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use crate::pages::home::{Date, PartialDate};
-
 use super::database_types::{DeckId, DeckList};
+use super::date_and_time::{current_time_in_seconds, Date, PartialDate};
 use super::outcomes::Outcome;
 use super::queries::ValidQueryTypes;
 use super::shared_truth::{
@@ -224,10 +223,6 @@ impl UserState {
     pub fn is_authenticated(&self) -> bool {
         return self.is_authenticated;
     }
-}
-
-pub fn current_time_in_seconds() -> u64 {
-    use_timestamp().get_untracked() as u64 / 1000
 }
 
 pub fn expiration_date_from_s3_url(url: &str) -> Option<u64> {
