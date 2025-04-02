@@ -660,10 +660,7 @@ impl FromStr for Field {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut splitter = input.split(SEPARATOR3);
         let Some(name) = splitter.next() else {return Err(())};
-        let data = match splitter.next() {
-            Some(data) => data,
-            None => "",
-        };
+        let data = splitter.next().unwrap_or_else(|| "");
         match splitter.next() {
             Some(_) => return Err(()),
             None => (),

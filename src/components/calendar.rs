@@ -276,10 +276,10 @@ pub fn CalendarItem(dates: RwSignal<ThreeCalendarMonths>, item_type: CalendarIte
 
     let display = move |dates: ThreeCalendarMonths, which_month: CalendarState, date: Date| {
         if date == Date::NO_DISPLAY {return "none";};
-        if dates.currently_displayed == which_month {
-            return "block";
+        return if dates.currently_displayed == which_month {
+            "block"
         } else {
-            return "none";
+            "none"
         }
     };
 
