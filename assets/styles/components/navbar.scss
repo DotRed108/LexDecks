@@ -11,15 +11,16 @@ h1 {
 	height: var(--header-height);
 	position: sticky;
 	top: 0;
-	padding: 0 calc(var(--global-margin)/2);
 	background-color: var(--white);
 	border-bottom: 1px solid #d5d5d5;
 	box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
 }
 
 .navbar {
-	grid-area: navbar;
-	text-align: center;
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	justify-content: space-between;
 }
 
 .navlist {
@@ -54,39 +55,6 @@ h1 {
 	height: auto;
 	border: 1px solid rgba(var(--off-white-rgb), 0);
 	font-size: var(--sign-in-link-and-logo-nav-font-size)
-}
-
-.sign-in-link {
-	box-sizing: border-box;
-	width: var(--sign-in-link-and-logo-nav-width);
-	transition: all 0.3s ease 0s;
-	font-family: var(--font-family-default);
-	font-size: var(--sign-in-link-and-logo-nav-font-size);
-	text-decoration: none;
-	text-align: center;
-	border-radius: 3px;
-	padding: 0.9svh 0;
-	border: 1px solid var(--winter3);
-	background-color: var(--winter3);
-	color: var(--white);
-	font-weight: 600;
-	text-shadow: var(--text-shadow-dark);
-}
-
-.sign-in-link:hover {
-	text-decoration: none;
-	outline: none;
-	outline-width: 0;
-	border: 1px solid var(--white);
-	box-shadow: 0 1px 1px var(--white);
-	cursor: pointer;
-}
-
-.sign-in-link:focus {
-	text-decoration: none;
-	outline: none;
-	outline-width: 0;
-	box-shadow: 0 1px 1px var(--white);
 }
 
 .header-pfp {

@@ -65,6 +65,20 @@ impl Shadow {
         css.push_str(&shadow.css());
         return css;
     }
+
+    pub fn surrounding_shadow(color: Color, css_size: &str) -> Shadow {
+        let negative = &format!("calc(-1 *{css_size})");
+        let mut shadow = Shadow::new(color, css_size, css_size, 0);
+        let shadow2 = Shadow::new(color, css_size, negative, 0);
+        let shadow3 = Shadow::new(color, negative, css_size, 0);
+        let shadow4 = Shadow::new(color, negative, negative, 0);
+
+        shadow.add_shadow(shadow2);
+        shadow.add_shadow(shadow3);
+        shadow.add_shadow(shadow4);
+
+        shadow
+    }
 }
 
 impl Default for Shadow {

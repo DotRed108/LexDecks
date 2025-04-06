@@ -1,6 +1,5 @@
 pub mod app;
 pub mod utils_and_structs;
-pub mod header;
 pub mod pages;
 pub mod components;
 

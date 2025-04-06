@@ -8,8 +8,11 @@ use crate::utils_and_structs::database_types::DeckId;
 #[component]
 pub fn Home() -> impl IntoView {
     let current_deck = RwSignal::new(DeckId::default());
+    let subject = RwSignal::new("Welcome to LexDecks! Here are your reviews and lessons for the day.".to_string());
+    let urgent = RwSignal::new(false);
+    let message = RwSignal::new("gay".to_string());
     view! {
-        <MessageBox/>
+        <MessageBox subject urgent message margin_top="var(--default-div-margin)".into()/>
         <div class="content-flex home-container">
             <div class="multi-or-one-grid">
                 <StudyWindow study_type=StudyType::Lesson/>
@@ -24,7 +27,7 @@ pub fn Home() -> impl IntoView {
 #[component]
 pub fn DeckSelector() -> impl IntoView {
     view! {
-        <div class="ka chow giver black-bg">
-        </div>
+        <form class="ka chow giver black-bg">
+        </form>
     }
 }

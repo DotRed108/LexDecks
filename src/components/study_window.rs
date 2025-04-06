@@ -20,6 +20,7 @@ pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
             border_color: Color::Mint,
             text_color: Color::DarkSlate,
             box_shadow: Shadow::dark(),
+            padding: "1.7ch".to_string(),
             ..Default::default()
         },
         StudyType::Review => ButtonConfig {
@@ -27,6 +28,7 @@ pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
             background_color: Color::Winter4,
             border_color: Color::Winter4,
             box_shadow: Shadow::dark(),
+            padding: "1.7ch".to_string(),
             ..Default::default()
         },
     };

@@ -33,6 +33,12 @@
 
 .content-grid > .full-width {
   grid-column: full-width;
+
+  display: grid;
+  grid-template-columns: inherit;
+}
+.full-width-no-inherit {
+  grid-column: full-width !important;
 }
 
 /* https://www.youtube.com/watch?v=LEkFckg7sfw */

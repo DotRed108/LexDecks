@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use leptos::{either::Either, prelude::*};
+use leptos::{either::EitherOf4 as Either, prelude::*};
 
 use crate::utils_and_structs::ui::{Color, Shadow};
 
@@ -34,14 +34,12 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
         padding: {padding};
         border-width: {border_width};
     }}
-    ", height=config.css_height, 
-    border_width=format!("calc({padding}/2)"),
+    ",
+    height=config.css_height,
+    border_width=format!("calc({padding}/2.2)"),
     rgba_border_col=config.text_color.rgba(30));
 
     let button_styles = "
-        :root {
-            --button-border-width: calc(var(--button-padding)/2);
-        }
         .button {
             display: block;
             box-sizing: border-box;
@@ -66,7 +64,7 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
     ";
     this_button_styles.push_str(button_styles);
 
-    let mut classes = this_button.clone();
+    let mut classes = format!("{} {}", this_button.clone(), config.class);
     classes.push(' ');
     classes.push_str("button");
     let mut font_weight = "400";
@@ -74,17 +72,31 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
     
     view! {
         <style>{this_button_styles}</style>
-        {match config.link {
-            Some(link) => Either::Left(
+        {match config.button_type {
+            ButtonType::Link(link) => Either::A(
                 view! {
                     <a class=classes href=link style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </a>
                 }
             ),
-            None => Either::Right(
+            ButtonType::Submit => Either::B(
                 view! {
-                    <button class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                    <button type="submit" style:line-height="0" class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                        {config.text}
+                    </button>
+                }
+            ),
+            ButtonType::Reset => Either::C(
+                view! {
+                    <button type="reset" class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                        {config.text}
+                    </button>
+                }
+            ),
+            ButtonType::Default => Either::D(
+                view! {
+                    <button type="button" class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </button>
                 }
@@ -103,8 +115,18 @@ pub struct ButtonConfig {
     pub text_shadow: Shadow,
     pub box_shadow: Shadow,
     pub bold: bool,
-    pub link: Option<String>,
     pub padding: String,
+    pub button_type: ButtonType,
+    pub class: String,
+}
+
+#[derive(Default, Clone, Copy)]
+pub enum ButtonType {
+    #[default]
+    Default,
+    Submit,
+    Link(&'static str),
+    Reset,
 }
 
 impl Default for ButtonConfig {
@@ -126,8 +148,9 @@ impl Default for ButtonConfig {
             text_shadow, 
             box_shadow,
             bold: true,
-            link: None,
             padding: "calc(0.6ch + 0.3svw)".to_string(),
+            button_type: Default::default(),
+            class: "".to_string(),
         }
     }
 }

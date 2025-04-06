@@ -28,6 +28,7 @@ pub const AUTH_TOKEN_HEADER: &str = "token";
 pub const MAX_EMAIL_SIZE: usize = 100;
 
 // ASSET LINKS
+pub const FULL_LOGO_PATH: &str = "../../images/Transparent_LexLingua_Primary Logo.png";
 pub const LOGO_PATH: &str = "../../images/NavBarLogo.webp";
 pub const CALENDAR_BG: &str = "../../images/starchart.avif";
 
