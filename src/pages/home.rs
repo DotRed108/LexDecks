@@ -8,9 +8,11 @@ use crate::utils_and_structs::database_types::{DeckId, DeckList};
 #[component]
 pub fn Home() -> impl IntoView {
     let current_deck = RwSignal::new(DeckId::default());
+    let deck_list = DeckList::default();
     let subject = RwSignal::new("Welcome to LexDecks! Here are your reviews and lessons for the day.".to_string());
     let urgent = RwSignal::new(false);
     let message = RwSignal::new("gay".to_string());
+
     view! {
         <MessageBox subject urgent message margin_top="var(--default-div-margin)".into()/>
         <div class="content-flex home-container">
@@ -18,7 +20,7 @@ pub fn Home() -> impl IntoView {
                 <StudyWindow study_type=StudyType::Lesson/>
                 <StudyWindow study_type=StudyType::Review/>
             </div>
-            <DeckSelector _deck_list = deck_list/>
+            <DeckSelector _deck_list=deck_list/>
             <Calendar current_deck/>
         </div>
     }
