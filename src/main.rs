@@ -8,6 +8,7 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use lex_decks::app::*;
 
+    // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
@@ -30,6 +31,7 @@ async fn main() {
         .await
         .unwrap();
 }
+
 
 #[cfg(not(feature = "ssr"))]
 pub fn main() {

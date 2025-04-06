@@ -7,19 +7,19 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8.0-beta" }
+leptos = { version = "0.8.0-beta"}
 leptos_router = { version = "0.8.0-beta" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
 leptos_axum = { version = "0.8.0-beta", optional = true }
 leptos_meta = { version = "0.8.0-beta" }
-tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
 wasm-bindgen = { version = "=0.2.100", optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_arrays = "0.1.0"
 serde_json = "1.0.120"
 struct_field_names = "0.2.1"
-strum = { version = "0.26.3", features = ["derive"] }
+strum = { version = "0.27.1", features = ["strum_macros", "derive"] }
 take_mut = "0.2.2"
 partial_derive = "0.1.0"
 pasetors = "0.6.8"                                                         # 0.7.2
@@ -43,6 +43,10 @@ ssr = [
     "leptos-use/ssr",
 ]
 
+[package.metadata.cargo-all-features]
+denylist = ["axum", "tokio", "leptos_axum"]
+skip_feature_sets = [["csr", "ssr"], ["csr", "hydrate"], ["ssr", "hydrate"]]
+
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]
 inherits = "release"
@@ -55,6 +59,7 @@ panic = "abort"
 opt-level = 0
 [profile.dev.package."*"]
 opt-level = 3
+
 
 [package.metadata.leptos]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
