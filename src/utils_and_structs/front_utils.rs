@@ -21,8 +21,6 @@ use pasetors::{
 };
 use web_sys::{Element, HtmlImageElement};
 
-use super::db_and_cache::update_cache;
-
 pub const EXP_CLAIM_KEY: &str = "\"exp\":\"";
 pub const EMAIL_CLAIM_KEY: &str = "\"user\":\"";
 
@@ -314,17 +312,6 @@ pub fn image_cached(url: &str) -> bool {
     }
 
     is_cached
-}
-
-pub async fn universal_handle_outcome(outcome: &Outcome) {
-    let outcomes = outcome.multi_outcome_to_vec();
-
-    for o in outcomes {
-        match o {
-            Outcome::DatabaseUpdateSuccess(cache_recipes) => update_cache(cache_recipes).await,
-            _ => continue,
-        }
-    }
 }
 
 pub fn frontend_query_validation(query: &ValidQueryTypes, valid_decks: DeckList) -> Outcome {    

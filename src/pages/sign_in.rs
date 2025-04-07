@@ -1,8 +1,9 @@
-use std::time::Duration;
-
 use leptos::{either::Either, prelude::*};
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
-use tokio::time::sleep;
+use crate::utils_and_structs::{shared_truth::{SIGN_IN_PAGE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, dynamo_utils::{setup_client, validate_user_standing}, back_utils::{build_auth_token, build_refresh_token, build_sign_up_token}};
+#[cfg(feature = "ssr")]
+use lettre::{self, message::header::ContentType, transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
 
 use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, shared_truth::{FULL_LOGO_PATH, MAX_EMAIL_SIZE}, ui::{Color, Shadow} }};
 
@@ -14,18 +15,6 @@ pub fn SignIn() -> impl IntoView {
 
     let input_element = NodeRef::new();
     let checkbox_element = NodeRef::new();
-
-    #[server]
-    pub async fn send_email(email: String) -> Result<Outcome, ServerFnError> {
-        println!("What da");
-
-        sleep(Duration::from_secs(1)).await;
-        if email == "whatda@gmail.com".to_string() {
-            Ok(Outcome::EmailAlreadyInUse)
-        } else {
-            Ok(Outcome::EmailSendSuccess)
-        }
-    }
 
     let request_email_send = ServerAction::<SendEmail>::new();
 
@@ -179,7 +168,7 @@ pub fn SignIn() -> impl IntoView {
                 urgent.set(false);
                 message.set(String::new());
             },
-            Outcome::EmailSendFailure(_) => {
+            Outcome::EmailSendFailure(_e) => {
                 subject.set("Could not send email. Try again in a bit.".into());
                 urgent.set(true);
                 message.set(String::new());
@@ -194,13 +183,15 @@ pub fn SignIn() -> impl IntoView {
                 urgent.set(true);
                 message.set(String::new());
             },
-            Outcome::UserSuspended(date) => {
+            Outcome::UserSuspended(_date) => {
                 subject.set("This email is associated with a suspended account.".into());
                 urgent.set(true);
                 message.set(String::new());
             },
-            _any_other_outcome => {
-                subject.set("Unspecified error occured. Please wait and try again.".into());
+            any_other_outcome => {
+                subject.set(any_other_outcome.to_string());
+                urgent.set(true);
+                message.set(String::new());
             }
         }
     };
@@ -229,12 +220,108 @@ pub fn SignIn() -> impl IntoView {
                     },
                     None => Either::Right(view! {
                         <label style:display="none" for="email"></label>
-                        <input style:height=sign_in_height maxlength=MAX_EMAIL_SIZE pattern="[^@\\s]+@[^@\\s]+\\.[^@\\s]+" class="sign-in-email-input" node_ref=input_element autocomplete="on" id="email" name="email" placeholder="Enter Email" type="email"/>
+                        <input style:height=sign_in_height maxlength=MAX_EMAIL_SIZE pattern="[^@\\s]+@[^@\\s]+\\.[^@\\s]+" class="sign-in-email-input" node_ref=input_element autocomplete="on" id="email" name="sign_in_form[email]" placeholder="Enter Email" type="email"/>
                         <Button config=ButtonConfig {button_type: ButtonType::Submit, text: "Sign \u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}".to_string(), css_height: sign_in_height.into(), css_width: email_input_width.into(), class:"sign-in-button".into(), ..Default::default()}/>
-                        <SlideToggleCheckbox checkbox_ref=checkbox_element/>
+                        <SlideToggleCheckbox action_form_name="sign_in_form[remember_me]".into() checkbox_ref=checkbox_element/>
                     })
                 }}
             </Show>
         </ActionForm>
+    }
+}
+
+const SENDER_EMAIL: &str = "LexLingua <mailtrap@demomailtrap.com>";
+const DEMO_MAILTRAP_PASSWORD: &str = "b8bd86f42193f60cc1ff4420ffb68a59";
+const MAILTRAP_USERNAME: &str = "api";
+const _MAILTRAP_PASSWORD: &str = "a0b103db49012c23dfd54092e886509b";
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct SignInUpInputs {
+    email: String,
+    remember_me: Option<String>,
+}
+
+#[server]
+async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnError> {
+    let email_address = &sign_in_form.email;
+
+    let is_trusted = match sign_in_form.remember_me {
+        Some(_) => true,
+        None => false,
+    };
+
+    let client = setup_client().await;
+
+    let outcome = match validate_user_standing(&client, email_address).await {
+        Outcome::PermissionGranted(_) => sign_up_or_in(email_address, false, is_trusted).await,
+        Outcome::UserNotFound => sign_up_or_in(email_address, true, is_trusted).await,
+        any_other_outcome => return Ok(any_other_outcome)
+    };
+
+    Ok(outcome)
+}
+
+#[cfg(feature = "ssr")]
+async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (String, String, String) {
+    // refresh_token, auth_token, sign_up_token
+    if sign_up {
+        let sign_up_token = build_sign_up_token(is_trusted, email_address).unwrap();
+        return ("".to_owned(), "".to_owned(), sign_up_token)
+    } else {
+        let refresh_token = build_refresh_token(is_trusted, email_address).unwrap();
+        let auth_token = build_auth_token(is_trusted, email_address).unwrap();
+        return (refresh_token, auth_token, "".to_string());
+    }
+}
+
+#[cfg(feature = "ssr")]
+async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
+    let recipient = format!("LexLingua User <{email_address}>");
+    
+    let message: Message;
+    let message_bldr = Message::builder()
+    .from(SENDER_EMAIL.parse().unwrap())
+    .reply_to(SENDER_EMAIL.parse().unwrap())
+    .to(recipient.parse().unwrap());
+
+    let (refresh_token, auth_token, sign_up_token) = create_token(email_address, sign_up, is_trusted).await;
+
+    let mut redirect_url = SIGN_IN_PAGE.to_string();
+
+    if sign_up {
+        redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
+        redirect_url.push_str("&sign-up=true");
+        let Ok(msg) = message_bldr
+        .subject("Welcome to LexLingua")
+        .header(ContentType::TEXT_PLAIN)
+        .body(String::from(redirect_url)) else {
+            return Outcome::EmailSendFailure("email could not be built".to_string());
+        };
+        message = msg;
+    } else {
+        redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
+        let Ok(msg) = message_bldr
+        .subject("Sign in link")
+        .header(ContentType::TEXT_PLAIN)
+        .body(String::from(redirect_url)) else {
+            return Outcome::EmailSendFailure("email could not be built".to_string());
+        };
+        message = msg;
+    }
+
+    let creds = Credentials::new(MAILTRAP_USERNAME.to_string(), DEMO_MAILTRAP_PASSWORD.to_string());
+
+    let Ok(smtp_bldr) = SmtpTransport::relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
+    let mailer = smtp_bldr.credentials(creds).build();
+
+    match mailer.send(&message) {
+        Ok(response) => {
+            if response.is_positive() {
+                Outcome::EmailSendSuccess
+            } else {
+                Outcome::EmailSendFailure("Email recieved response but failed".to_string())
+            }
+        },
+        Err(e) => Outcome::EmailSendFailure(format!("Email failed to send with error {e}")),
     }
 }

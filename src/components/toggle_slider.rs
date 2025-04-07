@@ -3,7 +3,7 @@ use leptos::{html::Input, prelude::*};
 use crate::utils_and_structs::ui::Color;
 
 #[component]
-pub fn SlideToggleCheckbox(checkbox_ref: NodeRef<Input>) -> impl IntoView {
+pub fn SlideToggleCheckbox(checkbox_ref: NodeRef<Input>, #[prop(default = "remember".into())] action_form_name: String) -> impl IntoView {
 
     let height = "30px";
     let styles = format!("
@@ -84,7 +84,7 @@ pub fn SlideToggleCheckbox(checkbox_ref: NodeRef<Input>) -> impl IntoView {
     view! {
         <style>{styles}</style>
         <label style:user-select="none" class="sign-in-remember-label" for="remember">
-            <input style:display="none" class="sign-in-remember-input" id="remember" name="remember" node_ref=checkbox_ref checked type="checkbox"/>
+            <input style:display="none" class="sign-in-remember-input" id="remember" value="true" name=action_form_name node_ref=checkbox_ref checked type="checkbox"/>
             <div id="toggle" class="remember-input-slide-toggle"></div>
             <label for="remember">"\u{00A0}Remember Me"</label>
         </label>
