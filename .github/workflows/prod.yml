@@ -25,7 +25,7 @@ jobs:
       with:
         push: true
   deploy:
-    needs: docker
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
