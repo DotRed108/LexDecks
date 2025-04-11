@@ -177,6 +177,20 @@ pub fn SignIn() -> impl IntoView {
 
     let display_response = move |outcome: Outcome| {
         match outcome {
+            Outcome::UnresolvedOutcome => {
+                response.set(None);
+                on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
+            },
+            Outcome::UserSignedIn => {
+                subject.set("You have been signed in. Continue to the home page.".into());
+                urgent.set(false);
+                message.set(String::new());
+            },
+            Outcome::UserNotSignedIn => {
+                subject.set("You could not be signed in. Make sure cookies and Javscript/WASM are enabled in your browser.".into());
+                urgent.set(true);
+                message.set(String::new());
+            },
             Outcome::EmailSendSuccess => {
                 subject.set("Check Your Email".into());
                 urgent.set(false);
@@ -208,23 +222,17 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::UserOnlyHasRefreshToken => {
-                subject.set("You could not be signed in. Try Refreshing your browser.".into());
+                subject.set(
+                    "You could not be signed in. Refreshing your browser might fix this. 
+                    If not try enabling Javascript/WASM and cookies in your browser".into()
+                );
                 urgent.set(true);
                 message.set(String::new());
             },
-            Outcome::UserSignedIn => {
-                subject.set("You have been signed in. Continue to the home page.".into());
-                urgent.set(false);
-                message.set(String::new());
-            },
-            Outcome::UserNotSignedIn => {
-                subject.set("You could not be signed in. Make sure cookies and Javscript/WASM is enabled in your browser.".into());
+            Outcome::RefreshTokenFailure(_) => {
+                subject.set("You could not be signed in please go back and get a sign in email".into());
                 urgent.set(true);
                 message.set(String::new());
-            },
-            Outcome::UnresolvedOutcome => {
-                response.set(None);
-                on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
             },
             any_other_outcome => {
                 subject.set(any_other_outcome.to_string());
