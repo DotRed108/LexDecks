@@ -376,3 +376,56 @@ pub fn get_fake_review_schedule(_deck_id: DeckId) -> (HashMap<PartialDate, usize
 
     return (fake_review_schedule, highest_review_amount)
 }
+
+pub async fn get_cookie_value(name: &str) -> Option<String> {
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let document = window()?.document()?;
+        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
+        let cookies = html_document.cookie().ok()?;
+
+        let value = cookies
+            .split(';')
+            .map(|c| c.trim())
+            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
+            .map(|s| s.to_string());
+
+        return value;
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        use leptos_axum::extract;
+        use axum_extra::extract::CookieJar;
+
+
+        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
+        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
+        Some(cookie_value.into())
+    }
+}
+
+pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let Ok(html_document) = leptos::prelude::document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
+        _ = html_document.set_cookie(&format!("{name}={value}"));
+        return Ok(());
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        let res = leptos::prelude::expect_context::<leptos_axum::ResponseOptions>();
+        let cookie_value = format!("{name}={value}; Path=/; Max-Age=31536000");
+        let header_value = axum::http::HeaderValue::from_str(&cookie_value);
+
+        if let Ok(header_value) = header_value {
+            res.insert_header(axum::http::header::SET_COOKIE, header_value);
+            return Ok(());
+        } else {
+            return Err(());
+        }
+    }
+}

@@ -1,19 +1,8 @@
 use std::str::FromStr;
-use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*};
+use leptos::{either::Either, prelude::*};
 use leptos_router::hooks::use_query_map;
-use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{front_utils::{get_claim, get_item_from_local_storage, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{front_utils::{get_claim, get_item_from_local_storage, set_cookie_value, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
-
-#[cfg(feature = "ssr")]
-use crate::utils_and_structs::{user_types::UserInfo, shared_truth::SIGN_IN_PAGE, dynamo_utils::{setup_client, validate_user_standing, EMAIL_DB_KEY}, back_utils::{get_current_date_as_secs, build_auth_token, build_refresh_token, build_sign_up_token, get_default_pfp, USERS_TABLE}};
-#[cfg(feature = "ssr")]
-use lettre::{self, message::header::ContentType, transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
-#[cfg(feature = "ssr")]
-use serde_dynamo::to_item;
-#[cfg(feature = "ssr")]
-use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
-#[cfg(feature = "ssr")]
-use axum::http;
 
 #[component]
 pub fn SignIn() -> impl IntoView {
@@ -362,74 +351,21 @@ pub async fn handle_sign_in(outcome: Outcome, user_state: RwSignal<UserState>) -
     }
 }
 
-///////////////////////// HANDLES USER CREATION //////////////////////////////////////
-/// 
-/// 
 
-#[server]
-async fn create_user(token: String) -> Result<Outcome, ServerFnError> {
-    let Ok(trusted_token) = verify_token(&token) else {return Ok(Outcome::VerificationFailure)};
-
-    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
-        Some(claim) => claim.parse().unwrap_or(false),
-        None => false,
-    };
-    let Some(user_email) = get_claim(&trusted_token, USER_CLAIM_SIGN_UP) else {return Ok(Outcome::VerificationFailure)};
-    
-    let dynamo_client = setup_client().await;
-
-    let outcome = add_user_to_db(&dynamo_client, &user_email, trusted_device).await;
-
-    Ok(outcome)
-}
-
+////// SERVER ONLY /////
 #[cfg(feature = "ssr")]
-async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device: bool) -> Outcome {
-    let Ok(token_pair) = create_token_pair(user_email, trusted_device).await else {
-        return Outcome::CreateUserFailure("Could not create token pair".to_string());
-    };
-
-    let mut user = UserInfo::default();
-    let current_time = get_current_date_as_secs();
-
-
-    user.email = user_email.to_string();
-    user.pfp = get_default_pfp();
-    user.sign_up_date = current_time;
-    user.last_login = current_time;
-    user.name = "Lex".to_string();
-    
-    let item = match to_item(user) {
-        Ok(itm) => {itm},
-        Err(e) => return Outcome::CreateUserFailure(e.to_string()),
-    };
-    
-    match dynamo_client.put_item().table_name(USERS_TABLE).set_item(Some(item))
-    .condition_expression(format!("attribute_not_exists({EMAIL_DB_KEY})")).send().await {
-        Ok(_) => proceed(),
-        Err(e) => {
-            match e.into_service_error() {
-                PutItemError::ConditionalCheckFailedException(_) => return Outcome::EmailAlreadyInUse,
-                error => return Outcome::CreateUserFailure(error.to_string()),
-            }
-        },
-    }
-
-    Outcome::UserCreationSuccess(token_pair)
-}
-
+use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
 #[cfg(feature = "ssr")]
-async fn create_token_pair(email_address: &str, trusted_device: bool) -> Result<TokenPair, Error> {
-    let auth_token = build_auth_token(trusted_device, email_address)?;
-    let refresh_token = build_refresh_token(trusted_device, email_address)?;
-
-    Ok(TokenPair::new(&refresh_token, &auth_token))
-}
-
-///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
-/// 
-/// 
-
+use serde_dynamo::to_item;
+#[cfg(feature = "ssr")]
+use crate::utils_and_structs::{
+    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing},
+    back_utils::{get_current_date_as_secs, get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
+    user_types::UserInfo, 
+    shared_truth::SIGN_IN_PAGE
+};
+#[cfg(feature = "ssr")]
+use lettre::{Transport, Message, message::header::ContentType, SmtpTransport, transport::smtp::authentication::Credentials};
 #[cfg(feature = "ssr")]
 const SENDER_EMAIL: &str = "LexLingua <mailtrap@demomailtrap.com>";
 #[cfg(feature = "ssr")]
@@ -438,6 +374,10 @@ const DEMO_MAILTRAP_PASSWORD: &str = "b8bd86f42193f60cc1ff4420ffb68a59";
 const MAILTRAP_USERNAME: &str = "api";
 #[cfg(feature = "ssr")]
 const _MAILTRAP_PASSWORD: &str = "a0b103db49012c23dfd54092e886509b";
+
+///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
+/// 
+/// 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SignInUpInputs {
@@ -530,6 +470,71 @@ async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (
     }
 }
 
+///////////////////////// HANDLES USER CREATION //////////////////////////////////////
+/// 
+/// 
+
+#[server]
+async fn create_user(token: String) -> Result<Outcome, ServerFnError> {
+    let Ok(trusted_token) = verify_token(&token) else {return Ok(Outcome::VerificationFailure)};
+
+    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
+        Some(claim) => claim.parse().unwrap_or(false),
+        None => false,
+    };
+    let Some(user_email) = get_claim(&trusted_token, USER_CLAIM_SIGN_UP) else {return Ok(Outcome::VerificationFailure)};
+    
+    let dynamo_client = setup_client().await;
+
+    let outcome = add_user_to_db(&dynamo_client, &user_email, trusted_device).await;
+
+    Ok(outcome)
+}
+
+#[cfg(feature = "ssr")]
+async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device: bool) -> Outcome {
+    let Ok(token_pair) = create_token_pair(user_email, trusted_device).await else {
+        return Outcome::CreateUserFailure("Could not create token pair".to_string());
+    };
+
+    let mut user = UserInfo::default();
+    let current_time = get_current_date_as_secs();
+
+
+    user.email = user_email.to_string();
+    user.pfp = get_default_pfp();
+    user.sign_up_date = current_time;
+    user.last_login = current_time;
+    user.name = "Lex".to_string();
+    
+    let item = match to_item(user) {
+        Ok(itm) => {itm},
+        Err(e) => return Outcome::CreateUserFailure(e.to_string()),
+    };
+    
+    match dynamo_client.put_item().table_name(USERS_TABLE).set_item(Some(item))
+    .condition_expression(format!("attribute_not_exists({EMAIL_DB_KEY})")).send().await {
+        Ok(_) => proceed(),
+        Err(e) => {
+            match e.into_service_error() {
+                PutItemError::ConditionalCheckFailedException(_) => return Outcome::EmailAlreadyInUse,
+                error => return Outcome::CreateUserFailure(error.to_string()),
+            }
+        },
+    }
+
+    Outcome::UserCreationSuccess(token_pair)
+}
+
+#[cfg(feature = "ssr")]
+async fn create_token_pair(email_address: &str, trusted_device: bool) -> Result<TokenPair, Error> {
+    let auth_token = build_auth_token(trusted_device, email_address)?;
+    let refresh_token = build_refresh_token(trusted_device, email_address)?;
+
+    Ok(TokenPair::new(&refresh_token, &auth_token))
+}
+
+
 ///////////////////////// HANDLES REFRESH TOKENS //////////////////////////////////////
 /// 
 /// 
@@ -560,57 +565,4 @@ async fn generate_auth_token(email_address: &str, refresh_token: &str, is_truste
     let auth_token = build_auth_token(is_trusted, email_address).unwrap();
 
     Outcome::TokensRefreshed(TokenPair::new(refresh_token, &auth_token).to_string())
-}
-
-async fn get_cookie_value(name: &str) -> Option<String> {
-    #[cfg(not(feature = "ssr"))]
-    {
-        use leptos::web_sys::wasm_bindgen::JsCast;
-        let document = window().document()?;
-        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
-        let cookies = html_document.cookie().ok()?;
-
-        let value = cookies
-            .split(';')
-            .map(|c| c.trim())
-            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
-            .map(|s| s.to_string());
-
-        return value;
-    }
-
-    #[cfg(feature = "ssr")]
-    {
-        use leptos_axum::extract;
-        use axum_extra::extract::CookieJar;
-
-
-        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
-        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
-        Some(cookie_value.into())
-    }
-}
-
-fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
-    #[cfg(not(feature = "ssr"))]
-    {
-        use leptos::web_sys::wasm_bindgen::JsCast;
-        let Ok(html_document) = document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
-        _ = html_document.set_cookie(&format!("{name}={value}"));
-        return Ok(());
-    }
-
-    #[cfg(feature = "ssr")]
-    {
-        let res = expect_context::<leptos_axum::ResponseOptions>();
-        let cookie_value = format!("{name}={value}; Path=/; Max-Age=31536000");
-        let header_value = http::HeaderValue::from_str(&cookie_value);
-
-        if let Ok(header_value) = header_value {
-            res.insert_header(axum::http::header::SET_COOKIE, header_value);
-            return Ok(());
-        } else {
-            return Err(());
-        }
-    }
 }
