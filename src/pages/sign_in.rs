@@ -1,17 +1,31 @@
-use leptos::{either::Either, prelude::*};
+use std::str::FromStr;
+use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*};
+use leptos_router::hooks::use_query_map;
+use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{front_utils::{get_claim, get_item_from_local_storage, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "ssr")]
-use crate::utils_and_structs::{shared_truth::{SIGN_IN_PAGE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, dynamo_utils::{setup_client, validate_user_standing}, back_utils::{build_auth_token, build_refresh_token, build_sign_up_token}};
+use crate::utils_and_structs::{user_types::UserInfo, shared_truth::SIGN_IN_PAGE, dynamo_utils::{setup_client, validate_user_standing, EMAIL_DB_KEY}, back_utils::{get_current_date_as_secs, build_auth_token, build_refresh_token, build_sign_up_token, get_default_pfp, USERS_TABLE}};
 #[cfg(feature = "ssr")]
 use lettre::{self, message::header::ContentType, transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
-
-use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, shared_truth::{FULL_LOGO_PATH, MAX_EMAIL_SIZE}, ui::{Color, Shadow} }};
+#[cfg(feature = "ssr")]
+use serde_dynamo::to_item;
+#[cfg(feature = "ssr")]
+use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
+#[cfg(feature = "ssr")]
+use axum::http;
 
 #[component]
 pub fn SignIn() -> impl IntoView {
+    let user_state = expect_context::<RwSignal<UserState>>();
+
     let subject = RwSignal::new(String::new());
     let urgent = RwSignal::new(false);
     let message = RwSignal::new(String::new());
+    
+    let on_load_outcome = Resource::new(move || user_state, |user_state| on_load(user_state));
+
+    Effect::new(move || {on_load_outcome.refetch();});
 
     let input_element = NodeRef::new();
     let checkbox_element = NodeRef::new();
@@ -157,8 +171,19 @@ pub fn SignIn() -> impl IntoView {
 
     let loading_button = move || {
         view! {
-            <Button config=ButtonConfig {button_type: ButtonType::Default, text: "Loading".into(), css_height:sign_in_height.into(), css_width: email_input_width.into(), ..Default::default()}/>
+            <Button config=ButtonConfig {id: "go_back".into(), button_type: ButtonType::Default, text: "Loading".into(), css_height:sign_in_height.into(), css_width: email_input_width.into(), ..Default::default()}/>
         }
+    };
+
+    let continue_button = move || {
+        view! {
+            <Button config=ButtonConfig {id: "continue".into(), button_type: ButtonType::Link("/"), text: "Continue".into(), css_height:sign_in_height.into(), css_width: email_input_width.into(), ..Default::default()}/>
+        }
+    };
+
+    let go_back = move |_| {
+        response.set(None);
+        on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
     };
 
     let display_response = move |outcome: Outcome| {
@@ -174,7 +199,7 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::EmailAlreadyInUse => {
-                subject.set("Email could not be used to sign up as it is already in use.".into());
+                subject.set("Email could not be used to sign up as it is already in use. Go back and request a sign in email.".into());
                 urgent.set(true);
                 message.set(String::new());
             },
@@ -188,6 +213,30 @@ pub fn SignIn() -> impl IntoView {
                 urgent.set(true);
                 message.set(String::new());
             },
+            Outcome::TokenExpired => {
+                subject.set("Token was expired".into());
+                urgent.set(true);
+                message.set(String::new());
+            },
+            Outcome::UserOnlyHasRefreshToken => {
+                subject.set("You could not be signed in. Try Refreshing your browser.".into());
+                urgent.set(true);
+                message.set(String::new());
+            },
+            Outcome::UserSignedIn => {
+                subject.set("You have been signed in. Continue to the home page.".into());
+                urgent.set(false);
+                message.set(String::new());
+            },
+            Outcome::UserNotSignedIn => {
+                subject.set("You could not be signed in. Make sure cookies and Javscript/WASM is enabled in your browser.".into());
+                urgent.set(true);
+                message.set(String::new());
+            },
+            Outcome::UnresolvedOutcome => {
+                response.set(None);
+                on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
+            },
             any_other_outcome => {
                 subject.set(any_other_outcome.to_string());
                 urgent.set(true);
@@ -196,43 +245,198 @@ pub fn SignIn() -> impl IntoView {
         }
     };
 
-    let go_back = move |_| {
-        response.set(None)
-    };
-
     view! {
         <style>{styles}</style>
         <ActionForm action=request_email_send>
             <img src=FULL_LOGO_PATH alt="LexLinguaLogo" class="sign-in-logo"/>
-            // `title` matches the `title` argument to `add_todo`
+            <Transition fallback=loading_button>
             <Show when=move || !request_email_send.pending().get() fallback=loading_button>{
-                match response.get() {
-                    Some(result) => {
-                        let outcome = match result {
-                            Ok(outcome) => outcome,
-                            Err(e) => Outcome::EmailSendFailure(e.to_string())   
-                        };
-                        display_response(outcome);
-                        Either::Left(view! {
-                            <MessageBox subject urgent message width=email_input_width.into() only_subject=true top_padding="calc(var(--sign-in-element-height)/2 - 0.5em)".into()/>
-                            <Button on:click=go_back config=ButtonConfig {css_height: sign_in_height.into(), text:"Go Back".into(), css_width: email_input_width.into(), ..Default::default()}/>
-                        })
-                    },
-                    None => Either::Right(view! {
+                let load_outcome = on_load_outcome.get().unwrap_or_default();
+                let action_result = response.get();
+                if action_result.is_some() || load_outcome != Outcome::UnresolvedOutcome {
+                    let mut outcome = match action_result.unwrap_or(Ok(Outcome::UnresolvedOutcome)) {
+                        Ok(outcome) => outcome,
+                        Err(e) => Outcome::EmailSendFailure(e.to_string()),
+                    };
+                    outcome = match load_outcome {
+                        Outcome::UnresolvedOutcome => outcome,
+                        any_other_outcome => any_other_outcome
+                    };
+                    display_response(outcome.clone());
+                    Either::Left(view! {
+                        <MessageBox subject urgent message width=email_input_width.into() only_subject=true top_padding="calc(var(--sign-in-element-height)/2 - 0.5em)".into()/>
+                        <Show when=move || !matches!(outcome, Outcome::UserSignedIn) fallback=continue_button>
+                        <Button on:click=go_back config=ButtonConfig {id:"goback".into(), css_height: sign_in_height.into(), text:"Go Back".into(), css_width: email_input_width.into(), ..Default::default()}/>
+                        </Show>
+                    })
+                } else {
+                    Either::Right(view! {
                         <label style:display="none" for="email"></label>
                         <input style:height=sign_in_height maxlength=MAX_EMAIL_SIZE pattern="[^@\\s]+@[^@\\s]+\\.[^@\\s]+" class="sign-in-email-input" node_ref=input_element autocomplete="on" id="email" name="sign_in_form[email]" placeholder="Enter Email" type="email"/>
-                        <Button config=ButtonConfig {button_type: ButtonType::Submit, text: "Sign \u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}".to_string(), css_height: sign_in_height.into(), css_width: email_input_width.into(), class:"sign-in-button".into(), ..Default::default()}/>
+                        <Button config=ButtonConfig {id: "signin".into(), button_type: ButtonType::Submit, text: "Sign \u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}".to_string(), css_height: sign_in_height.into(), css_width: email_input_width.into(), class:"sign-in-button".into(), ..Default::default()}/>
                         <SlideToggleCheckbox action_form_name="sign_in_form[remember_me]".into() checkbox_ref=checkbox_element/>
                     })
-                }}
-            </Show>
+                }
+            }</Show>
+            </Transition>
         </ActionForm>
     }
 }
 
+async fn on_load(user_state: RwSignal<UserState>) -> Outcome {
+    if user_state.get_untracked().is_authenticated() {
+        return Outcome::UserSignedIn;
+    }
+    let url_queries = use_query_map().get_untracked();
+
+    let sign_up_token = match url_queries.get(USER_CLAIM_SIGN_UP) {
+        Some(sign_up_token) => sign_up_token,
+        None => "".to_string(),
+    };
+
+    if !sign_up_token.is_empty() {
+        match verify_then_return_outcome(&sign_up_token) {
+            Outcome::VerificationSuccess(token) => {
+                let outcome = create_user(token).await.unwrap_or(Outcome::CreateUserFailure("Server failure occured".into()));
+                return handle_sign_in(outcome, user_state).await;
+            },
+            any_other_outcome => return any_other_outcome,
+        }
+    }
+
+    let mut on_refresh_token_failed_verify = Outcome::VerificationFailure;
+    let refresh_token = match url_queries.get(USER_CLAIM_REFRESH) {
+        Some(refresh_token) => refresh_token,
+        None => match get_item_from_local_storage(LOCAL_REFRESH_TOKEN_KEY) {
+            Some(token) => {on_refresh_token_failed_verify=Outcome::UnresolvedOutcome; token},
+            None => return Outcome::UnresolvedOutcome,
+        },
+    };
+
+    let Outcome::VerificationSuccess(refresh_token) = verify_then_return_outcome(&refresh_token) else {return on_refresh_token_failed_verify};
+
+    let token_pair = match url_queries.get(USER_CLAIM_AUTH) {
+        Some(auth_token) => TokenPair::new(&refresh_token, &auth_token),
+        None => match use_refresh_token(refresh_token).await {
+            Ok(outcome) => match outcome {
+                Outcome::TokensRefreshed(token_pair) => TokenPair::from_str(&token_pair).unwrap_or_default(),
+                any_other_outcome => return Outcome::RefreshTokenFailure(any_other_outcome.to_string()),
+            },
+            Err(e) => return Outcome::RefreshTokenFailure(e.to_string()),
+        },
+    };
+
+    if verify_token_pair(&token_pair).is_ok() {
+        return handle_sign_in(Outcome::SignInTokenPairVerified(token_pair), user_state).await;
+    } else {
+        return Outcome::VerificationFailure;
+    }
+}
+
+pub async fn handle_sign_in(outcome: Outcome, user_state: RwSignal<UserState>) -> Outcome {
+    let tokens = match outcome {
+        Outcome::SignInTokenPairVerified(tokens) => tokens,
+        Outcome::UserCreationSuccess(tokens) => tokens,
+        any_other_outcome => return any_other_outcome,
+    };
+
+    let auth_cookie_successful = set_cookie_value(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
+    let refresh_cookie_successful = set_cookie_value(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
+
+    let auth_local_successful = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
+    let refresh_local_successful = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
+
+    user_state.set(UserState::from_token_or_default(&tokens.get_auth_token()));
+
+    let in_client_memory = user_state.get_untracked().token() == tokens.get_auth_token() && !!!cfg!(feature="ssr");
+
+    let auth_successful = auth_local_successful || auth_cookie_successful || in_client_memory;
+    let refresh_successful = refresh_local_successful || refresh_cookie_successful;
+
+    if auth_successful {
+        return Outcome::UserSignedIn
+    } else if refresh_successful {
+        return Outcome::UserOnlyHasRefreshToken
+    } else {
+        return Outcome::UserNotSignedIn
+    }
+}
+
+///////////////////////// HANDLES USER CREATION //////////////////////////////////////
+/// 
+/// 
+
+#[server]
+async fn create_user(token: String) -> Result<Outcome, ServerFnError> {
+    let Ok(trusted_token) = verify_token(&token) else {return Ok(Outcome::VerificationFailure)};
+
+    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
+        Some(claim) => claim.parse().unwrap_or(false),
+        None => false,
+    };
+    let Some(user_email) = get_claim(&trusted_token, USER_CLAIM_SIGN_UP) else {return Ok(Outcome::VerificationFailure)};
+    
+    let dynamo_client = setup_client().await;
+
+    let outcome = add_user_to_db(&dynamo_client, &user_email, trusted_device).await;
+
+    Ok(outcome)
+}
+
+#[cfg(feature = "ssr")]
+async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device: bool) -> Outcome {
+    let Ok(token_pair) = create_token_pair(user_email, trusted_device).await else {
+        return Outcome::CreateUserFailure("Could not create token pair".to_string());
+    };
+
+    let mut user = UserInfo::default();
+    let current_time = get_current_date_as_secs();
+
+
+    user.email = user_email.to_string();
+    user.pfp = get_default_pfp();
+    user.sign_up_date = current_time;
+    user.last_login = current_time;
+    user.name = "Lex".to_string();
+    
+    let item = match to_item(user) {
+        Ok(itm) => {itm},
+        Err(e) => return Outcome::CreateUserFailure(e.to_string()),
+    };
+    
+    match dynamo_client.put_item().table_name(USERS_TABLE).set_item(Some(item))
+    .condition_expression(format!("attribute_not_exists({EMAIL_DB_KEY})")).send().await {
+        Ok(_) => proceed(),
+        Err(e) => {
+            match e.into_service_error() {
+                PutItemError::ConditionalCheckFailedException(_) => return Outcome::EmailAlreadyInUse,
+                error => return Outcome::CreateUserFailure(error.to_string()),
+            }
+        },
+    }
+
+    Outcome::UserCreationSuccess(token_pair)
+}
+
+#[cfg(feature = "ssr")]
+async fn create_token_pair(email_address: &str, trusted_device: bool) -> Result<TokenPair, Error> {
+    let auth_token = build_auth_token(trusted_device, email_address)?;
+    let refresh_token = build_refresh_token(trusted_device, email_address)?;
+
+    Ok(TokenPair::new(&refresh_token, &auth_token))
+}
+
+///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
+/// 
+/// 
+
+#[cfg(feature = "ssr")]
 const SENDER_EMAIL: &str = "LexLingua <mailtrap@demomailtrap.com>";
+#[cfg(feature = "ssr")]
 const DEMO_MAILTRAP_PASSWORD: &str = "b8bd86f42193f60cc1ff4420ffb68a59";
+#[cfg(feature = "ssr")]
 const MAILTRAP_USERNAME: &str = "api";
+#[cfg(feature = "ssr")]
 const _MAILTRAP_PASSWORD: &str = "a0b103db49012c23dfd54092e886509b";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -259,19 +463,6 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
     };
 
     Ok(outcome)
-}
-
-#[cfg(feature = "ssr")]
-async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (String, String, String) {
-    // refresh_token, auth_token, sign_up_token
-    if sign_up {
-        let sign_up_token = build_sign_up_token(is_trusted, email_address).unwrap();
-        return ("".to_owned(), "".to_owned(), sign_up_token)
-    } else {
-        let refresh_token = build_refresh_token(is_trusted, email_address).unwrap();
-        let auth_token = build_auth_token(is_trusted, email_address).unwrap();
-        return (refresh_token, auth_token, "".to_string());
-    }
 }
 
 #[cfg(feature = "ssr")]
@@ -323,5 +514,103 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
             }
         },
         Err(e) => Outcome::EmailSendFailure(format!("Email failed to send with error {e}")),
+    }
+}
+
+#[cfg(feature = "ssr")]
+async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (String, String, String) {
+    // refresh_token, auth_token, sign_up_token
+    if sign_up {
+        let sign_up_token = build_sign_up_token(is_trusted, email_address).unwrap();
+        return ("".to_owned(), "".to_owned(), sign_up_token)
+    } else {
+        let refresh_token = build_refresh_token(is_trusted, email_address).unwrap();
+        let auth_token = build_auth_token(is_trusted, email_address).unwrap();
+        return (refresh_token, auth_token, "".to_string());
+    }
+}
+
+///////////////////////// HANDLES REFRESH TOKENS //////////////////////////////////////
+/// 
+/// 
+
+#[server]
+async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerFnError> {
+    let Ok(trusted_token) = verify_token(&refresh_token) else {return Ok(Outcome::VerificationFailure)};
+
+    let Some(email) = get_claim(&trusted_token, USER_CLAIM_REFRESH) else {return Ok(Outcome::VerificationFailure)};
+
+    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
+        Some(claim) => claim.parse().unwrap_or(false),
+        None => false,
+    };
+    
+    let client = setup_client().await;
+
+    let outcome = match validate_user_standing(&client, &email).await {
+        Outcome::PermissionGranted(_) => generate_auth_token(&email, &refresh_token, trusted_device).await,
+        any_other_outcome => return Ok(any_other_outcome),
+    };
+
+    Ok(outcome)
+}
+
+#[cfg(feature = "ssr")]
+async fn generate_auth_token(email_address: &str, refresh_token: &str, is_trusted: bool) -> Outcome {
+    let auth_token = build_auth_token(is_trusted, email_address).unwrap();
+
+    Outcome::TokensRefreshed(TokenPair::new(refresh_token, &auth_token).to_string())
+}
+
+async fn get_cookie_value(name: &str) -> Option<String> {
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let document = window().document()?;
+        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
+        let cookies = html_document.cookie().ok()?;
+
+        let value = cookies
+            .split(';')
+            .map(|c| c.trim())
+            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
+            .map(|s| s.to_string());
+
+        return value;
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        use leptos_axum::extract;
+        use axum_extra::extract::CookieJar;
+
+
+        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
+        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
+        Some(cookie_value.into())
+    }
+}
+
+fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let Ok(html_document) = document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
+        _ = html_document.set_cookie(&format!("{name}={value}"));
+        return Ok(());
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        let res = expect_context::<leptos_axum::ResponseOptions>();
+        let cookie_value = format!("{name}={value}; Path=/; Max-Age=31536000");
+        let header_value = http::HeaderValue::from_str(&cookie_value);
+
+        if let Ok(header_value) = header_value {
+            res.insert_header(axum::http::header::SET_COOKIE, header_value);
+            return Ok(());
+        } else {
+            return Err(());
+        }
     }
 }

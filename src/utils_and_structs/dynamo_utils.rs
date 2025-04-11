@@ -240,6 +240,14 @@ pub async fn validate_user_standing(client: &Client, email: &str) -> Outcome {
     permission_if_good_standing(&user)
 }
 
+pub async fn validate_user_existence(client: &Client, email: &str) -> Outcome {
+    println!("email: {email}");
+    let outcome = get_user(client, email, Some(STANDING_DB_KEY)).await;
+
+    println!("{}", outcome.to_string());
+    return outcome;
+}
+
 pub async fn add_deck_to_user_active_decks_and_owned_decks(client: Client, email: &str, deck_id: &str) -> Outcome {
     let email = AttributeValue::S(email.to_string());
     let Ok(id) = DeckId::from_str(deck_id) else {return Outcome::DeckCouldNotBeProcessed("Could not parse deck id".to_owned())};

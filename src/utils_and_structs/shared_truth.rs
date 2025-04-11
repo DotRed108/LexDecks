@@ -33,7 +33,7 @@ pub const LOGO_PATH: &str = "../../images/NavBarLogo.webp";
 pub const CALENDAR_BG: &str = "../../images/starchart.avif";
 
 // SIGN IN
-pub const SIGN_IN_PAGE: &str = "http://localhost:1420/sign-in";
+pub const SIGN_IN_PAGE: &str = "http://localhost:3000/sign-in";
 
 // KEYS
 pub const LOCAL_AUTH_TOKEN_KEY: &str = "auth-token";

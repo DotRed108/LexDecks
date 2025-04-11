@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use super::sign_in_lib::TokenPair;
 use super::user_types::{PartialUserInfo, UserInfo};
 use super::database_types::UpdateRecipes;
 
@@ -9,7 +10,9 @@ pub const OUTCOME_SEPARATOR: &str = "|x|X|x|X|x|";
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub enum Outcome {
     #[default] UnresolvedOutcome,
+    VerificationSuccess(String),
     VerificationFailure,
+    TokenExpired,
     UserDoesNotHavePermission,
     InvalidRequest,
     UserSuspended(u64),
@@ -20,10 +23,15 @@ pub enum Outcome {
     EmailAlreadyInUse,
     CreateUserFailure(String),
     UpdateUserFailure(String),
-    UserCreationSuccess(String),
+    UserCreationSuccess(TokenPair),
     DatabaseUpdateSuccess(UpdateRecipes),
-    SignInTokenPairVerified(String),
+    SignInTokenPairVerified(TokenPair),
+    UserSignedIn,
+    UserOnlyHasRefreshToken,
+    UserNotSignedIn,
     TokensRefreshed(String),
+    RefreshTokenFailure(String),
+    NoRefreshTokenFound,
     UserNotFound,
     UserFound(UserInfo),
     PartialUserFound(PartialUserInfo),

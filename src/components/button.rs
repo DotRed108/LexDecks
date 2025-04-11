@@ -6,21 +6,18 @@ use crate::utils_and_structs::ui::{Color, Shadow};
 
 #[component]
 pub fn Button(config: ButtonConfig) -> impl IntoView {
-
-    static BUTTON_ID: AtomicUsize = AtomicUsize::new(0);
-    let id = BUTTON_ID.fetch_add(1, Ordering::Relaxed);
-
     let mut this_button = "button".to_string();
-    this_button.push_str(&id.to_string());
+    this_button.push_str(&config.id);
 
     let bg = config.background_color.hex();
     let border_col = config.border_color.hex();
     let text_col = config.text_color.hex();
     let padding = config.padding;
+    let border_width=format!("calc({padding}/2.2)");
+    let line_height = format!("calc({} - {border_width} * 2 - {padding} * 2)", config.css_height);
 
     let mut this_button_styles = format!("
     .{this_button} {{
-        line-height: calc({height} - var(--button-border-width) * 2);
         background-color: {bg};
         border-color: {border_col};
         color: {text_col};
@@ -35,8 +32,6 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
         border-width: {border_width};
     }}
     ",
-    height=config.css_height,
-    border_width=format!("calc({padding}/2.2)"),
     rgba_border_col=config.text_color.rgba(30));
 
     let button_styles = "
@@ -75,28 +70,28 @@ pub fn Button(config: ButtonConfig) -> impl IntoView {
         {match config.button_type {
             ButtonType::Link(link) => Either::A(
                 view! {
-                    <a class=classes href=link style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                    <a class=classes href=link id=this_button style:line-height=line_height style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </a>
                 }
             ),
             ButtonType::Submit => Either::B(
                 view! {
-                    <button type="submit" style:line-height="0" class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                    <button type="submit" id=this_button style:line-height="0" class=classes style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </button>
                 }
             ),
             ButtonType::Reset => Either::C(
                 view! {
-                    <button type="reset" class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                    <button type="reset" id=this_button class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </button>
                 }
             ),
             ButtonType::Default => Either::D(
                 view! {
-                    <button type="button" class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
+                    <button type="button" id=this_button class=classes style:line-height="0" style:font-weight=font_weight style:box-shadow=config.box_shadow.css() style:text-shadow=config.text_shadow.css() style:width=config.css_width style:height=config.css_height>
                         {config.text}
                     </button>
                 }
@@ -118,6 +113,7 @@ pub struct ButtonConfig {
     pub padding: String,
     pub button_type: ButtonType,
     pub class: String,
+    pub id: String,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -138,6 +134,8 @@ impl Default for ButtonConfig {
         box_shadow.color_intensity = 60;
         box_shadow.spread_radius = "".to_string();
 
+        static BUTTON_ID: AtomicUsize = AtomicUsize::new(0);
+
         Self { 
             css_width: "auto".to_string(), 
             css_height: "auto".to_string(),
@@ -151,6 +149,7 @@ impl Default for ButtonConfig {
             padding: "calc(0.6ch + 0.3svw)".to_string(),
             button_type: Default::default(),
             class: "".to_string(),
+            id: BUTTON_ID.fetch_add(1, Ordering::Relaxed).to_string(),
         }
     }
 }

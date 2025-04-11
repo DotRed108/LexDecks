@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::utils_and_structs::date_and_time::full_iso_to_secs;
+
 use super::database_types::{DeckId, DeckList};
 use super::date_and_time::{current_time_in_seconds, Date, PartialDate};
 use super::outcomes::Outcome;
@@ -9,9 +11,8 @@ use super::shared_truth::{
 };
 use super::sign_in_lib::TokenPair;
 use leptos::logging::debug_warn;
-use leptos::prelude::GetUntracked;
 use leptos::{web_sys, web_sys::window};
-use leptos_use::use_timestamp;
+use pasetors::errors::ClaimValidationError;
 use pasetors::{
     errors::Error,
     keys::AsymmetricPublicKey,
@@ -21,13 +22,17 @@ use pasetors::{
 };
 use web_sys::{Element, HtmlImageElement};
 
-pub const EXP_CLAIM_KEY: &str = "\"exp\":\"";
-pub const EMAIL_CLAIM_KEY: &str = "\"user\":\"";
+pub const EXP_CLAIM_KEY: &str = "exp";
+pub const EMAIL_CLAIM_KEY: &str = "user";
 
 pub const S3_CREATION_DATE_URL_PARAM: &str = "X-Amz-Date=";
 pub const S3_EXPIRATION_URL_PARAM: &str = "X-Amz-Expires=";
 
 pub fn get_item_from_local_storage(key: &str) -> Option<String> {
+    if cfg!(feature="ssr") {
+        return None;
+    }
+
     let item = match web_sys::window() {
         Some(window) => match window.local_storage() {
             Ok(t) => match t {
@@ -63,6 +68,10 @@ pub fn get_item_from_local_storage(key: &str) -> Option<String> {
 }
 
 pub fn store_item_in_local_storage(key: &str, value: &str) -> Result<(), ()> {
+    if cfg!(feature="ssr") {
+        return Err(());
+    }
+
     let local_storage = match window().unwrap().local_storage() {
         Ok(possible_storage) => match possible_storage {
             Some(storage) => storage,
@@ -113,7 +122,7 @@ pub fn clear_element_classes_and_add_new(element: Element, class: String) {
     let _ = element.class_list().add_1(&class);
 }
 
-pub fn verify_token(token: &String) -> Result<TrustedToken, Error> {
+pub fn verify_token(token: &str) -> Result<TrustedToken, Error> {
     let public_key = AsymmetricPublicKey::<V4>::from(&PUBLIC_KEY)?;
 
     let untrusted_token = UntrustedToken::<Public, V4>::try_from(token)?;
@@ -125,7 +134,30 @@ pub fn verify_token(token: &String) -> Result<TrustedToken, Error> {
         Some(b"implicit assertion"),
     )?;
 
+    let expiration = match get_claim(&trusted_token, EXP_CLAIM_KEY) {
+        Some(exp) => exp,
+        None => return Err(Error::ClaimValidation(ClaimValidationError::NoExp)),
+    };
+
+    // if is_expired(&expiration, None) {
+    //     return Err(Error::ClaimValidation(ClaimValidationError::Exp));
+    // }
+
     Ok(trusted_token)
+}
+
+pub fn verify_then_return_outcome(token: &str) -> Outcome {
+    let outcome = match verify_token(token) {
+        Ok(_) => Outcome::VerificationSuccess(token.into()),
+        Err(e) => match e {
+            Error::ClaimValidation(claim_validation_error) => match claim_validation_error {
+                ClaimValidationError::Exp => Outcome::TokenExpired,
+                _any_other_error => Outcome::VerificationFailure
+            },
+            _any_other_error => Outcome::VerificationFailure,
+        },
+    };
+    outcome
 }
 
 pub fn verify_token_pair(token_pair: &TokenPair) -> Result<(TrustedToken, TrustedToken), Error> {
@@ -134,12 +166,12 @@ pub fn verify_token_pair(token_pair: &TokenPair) -> Result<(TrustedToken, Truste
     Ok((verify_token(&refresh_token)?, verify_token(&auth_token)?))
 }
 
-pub fn is_expired(expiration_date: &str, offset: Option<f64>) -> bool {
-    let offset = offset.unwrap_or(0.0);
-    let expiration_time = web_sys::js_sys::Date::parse(expiration_date);
+pub fn is_expired(expiration_date: &str, offset_in_seconds: Option<u64>) -> bool {
+    let offset = offset_in_seconds.unwrap_or(0);
+    let Some(expiration_time) = full_iso_to_secs(expiration_date) else {return true};
     let expiration_time = expiration_time - offset;
 
-    let current_time = use_timestamp().get_untracked();
+    let current_time = current_time_in_seconds();
 
     if expiration_time > current_time {
         false
@@ -150,17 +182,12 @@ pub fn is_expired(expiration_date: &str, offset: Option<f64>) -> bool {
 
 pub fn get_claim(token: &TrustedToken, claim_key: &str) -> Option<String> {
     let payload = token.payload();
-    let claim_index = match payload.find(claim_key) {
-        Some(index) => index,
-        None => return None,
-    };
 
-    let (_, claim) = payload.split_at(claim_index);
-    let (_, claim) = claim.split_at(claim_key.len());
-    let claim_index = claim
-        .find("\"")
-        .expect("There should be a quote in this string");
-    let (claim, _) = claim.split_at(claim_index);
+    let claim_key = format!("\"{claim_key}\":\"");
+
+    let Some((_, claim)) = payload.split_once(&claim_key) else {return None};
+    let (claim, _) = claim.split_once("\"").expect("There should be a quotation mark at the end of the value");
+
     Some(claim.to_string())
 }
 
@@ -173,7 +200,7 @@ pub struct UserState {
 }
 
 impl UserState {
-    pub fn from_stored_token_or_default(stored_auth_token: &String) -> Self {
+    pub fn from_token_or_default(stored_auth_token: &String) -> Self {
         let auth_token = stored_auth_token;
         if !auth_token.is_empty() {
             let token = match verify_token(&auth_token) {
@@ -186,7 +213,7 @@ impl UserState {
                 None => return UserState::default(),
             };
 
-            if is_expired(&expiration, Some(18000 as f64)) {
+            if is_expired(&expiration, Some(18000)) {
                 return UserState::default();
             }
 

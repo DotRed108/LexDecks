@@ -1,8 +1,10 @@
 use::core::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 use super::shared_truth::SEPARATOR;
 
-
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TokenPair(String, String);
 
 impl TokenPair {

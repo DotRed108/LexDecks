@@ -3,6 +3,8 @@ use leptos_use::use_timestamp;
 use partial_derive::Partial;
 use strum::Display;
 
+use crate::utils_and_structs::proceed;
+
 #[derive(Clone, Copy)]
 pub struct ThreeCalendarMonths {
     pub last_month: [Date; Date::MAX_CALENDAR_DATES],
@@ -305,6 +307,22 @@ impl Date {
 
         ThreeCalendarMonths {last_month: month1, this_month: month2, next_month: month3, currently_displayed: CalendarState::ThisMonth, currently_displayed_month: self.month}
     }
+
+    pub fn date_to_secs(&self) -> u64 {
+        let mut total_days = self.day as u64 - 1;
+
+        let mut month_index = self.month.index - 1;
+        for year in (1970..=self.year).rev() {
+            for i in 0..month_index {
+                let month = Date::MONTHS[i];
+                total_days += month.days(year) as u64;
+            }
+            month_index = 12;
+        }
+
+        let total_seconds = total_days * 86400;
+        total_seconds
+    }
 }
 
 impl ToString for Date {
@@ -382,4 +400,57 @@ impl ToString for Month {
 
 pub fn current_time_in_seconds() -> u64 {
     use_timestamp().get_untracked() as u64 / 1000
+}
+
+pub fn full_iso_to_secs(iso_str: &str) -> Option<u64> {
+    let date_time_split = iso_str.find('T');
+
+    let date_time_split = match date_time_split {
+        Some(index) => index,
+        None => return None,
+    };
+
+    let (date, time) = iso_str.split_at(date_time_split);
+
+    let mut time = time.to_ascii_uppercase();
+    let is_utc = time.ends_with('Z');
+    if !is_utc {return None;}
+    
+    let milli_second_index = time.find('.');
+    match milli_second_index {
+        Some(index) => {let _ = time.split_off(index);},
+        None => proceed(),
+    }
+    
+    let time = &time[1..];
+
+    let time_splitter = ':';
+    let date_splitter = '-';
+
+    let time_elements = time.split(time_splitter);
+    let date_elements = date.split(date_splitter);
+
+    let mut date = Date::default();
+    for (index, element) in date_elements.enumerate() {
+        let Ok(element) = element.parse() else {return None};
+        match index {
+            0 => date.year = element,
+            1 => date.month = Date::MONTHS[element - 1],
+            2 => date.day = element,
+            _ => return None,
+        }
+    }
+    let mut seconds = date.date_to_secs();
+
+    for (index, element) in time_elements.enumerate() {
+        let Ok(element): Result<u64, _> = element.parse() else {return None};
+        match index {
+            0 => seconds += element * 3600,
+            1 => seconds += element * 60,
+            2 => seconds += element,
+            _ => return None,
+        }
+    }
+
+    Some(seconds)
 }

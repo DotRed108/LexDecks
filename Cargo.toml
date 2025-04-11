@@ -22,8 +22,8 @@ struct_field_names = "0.2.1"
 strum = { version = "0.27.1", features = ["strum_macros", "derive"] }
 take_mut = "0.2.2"
 partial_derive = "0.1.0"
-pasetors = "0.6.8"                                                         # 0.7.2
-leptos-use = "0.16.0-beta"                                                # 0.4.2
+pasetors = {version = "=0.7.1", default-features = false, features = ["v4"]}
+leptos-use = "0.16.0-beta"
 serde-wasm-bindgen = "0.6"
 icondata = { version = "0.5.0" }
 leptos_icons = { path = "../../Projects/leptos-icons" }
@@ -32,10 +32,11 @@ aws-config = {version = "1.1.9", optional = true}
 aws-sdk-dynamodb = {version = "1.71.0", optional = true}
 serde_dynamo = {version = "4.2.14", features = ["aws-sdk-dynamodb+1"], optional = true}
 lettre = { version = "0.11.15" , default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls", "rustls-tls", "tokio1"], optional = true }
+axum-extra = {version = "0.10.1", default-features = false, features = ["cookie"], optional = true}
 
 [features]
 default = ["hydrate", "ssr"]
-hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen"]
+hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen",]
 ssr = [
     "dep:aws-config",
     "dep:aws-sdk-dynamodb",
@@ -43,11 +44,14 @@ ssr = [
     "dep:axum",
     "dep:tokio",
     "dep:leptos_axum",
+    "dep:axum-extra",
     "dep:lettre",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "leptos-use/ssr",
+    "leptos-use/axum",
+    "pasetors/std",
 ]
 
 [package.metadata.cargo-all-features]

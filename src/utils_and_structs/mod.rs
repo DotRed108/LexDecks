@@ -13,6 +13,8 @@ pub mod date_and_time;
 pub mod dynamo_utils;
 #[cfg(feature = "ssr")]
 pub mod back_utils;
+#[cfg(feature = "ssr")]
+pub mod middleware;
 
 pub fn proceed() {
     ()
