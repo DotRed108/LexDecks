@@ -45,9 +45,12 @@ COPY --from=builder /app/Cargo.toml /app/
 
 # Set any required env variables and
 ENV RUST_LOG="info"
-ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
+ENV LEPTOS_OUTPUT_NAME="lex-decks"
 ENV LEPTOS_SITE_ROOT="site"
-EXPOSE 8080
+ENV LEPTOS_SITE_PKG_DIR="pkg"
+ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
+ENV LEPTOS_RELOAD_PORT="3001"
+EXPOSE 3000
 
 # -- NB: update binary name from "leptos_start" to match your app name in Cargo.toml --
 # Run the server
