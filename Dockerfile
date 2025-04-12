@@ -8,7 +8,7 @@ RUN tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz
 RUN cp cargo-binstall /usr/local/cargo/bin
 
 # Install caching tool
-RUN cargo install cargo-chef -y
+RUN cargo install cargo-chef
 # Install required tools
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends clang
