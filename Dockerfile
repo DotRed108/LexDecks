@@ -31,7 +31,6 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 # Build and cache dependencies
-RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
 RUN cargo chef cook --release --target wasm32-unknown-unknown --recipe-path recipe.json
 
 # Copy the source code
