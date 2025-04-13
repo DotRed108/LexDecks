@@ -58,7 +58,7 @@ jobs:
           echo ssl_cert_complete
           echo ssl_cert_private_key
           export SSL_CERT_PRIVATE_KEY=${{ secrets.SSL_CERT_PRIVATE_KEY }}
-          echo ssl_cert_private_key_complete
+          echo ${{SSL_CERT_PRIVATE_KEY}}
           docker-compose down
           docker-compose pull
           docker-compose up
