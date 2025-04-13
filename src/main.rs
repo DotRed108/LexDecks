@@ -2,7 +2,6 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() {
-    use std::path::PathBuf;
     use std::env;
 
     use axum::Router;
@@ -16,8 +15,20 @@ async fn main() {
     // let cert = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem");
     // let key = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem");
 
-    let cert = env::var("SSL_CERT").unwrap().as_bytes().into();
-    let key = env::var("SSL_CERT_PRIVATE_KEY").unwrap().as_bytes().into();
+    let begin_cert = "-----BEGIN CERTIFICATE-----";
+    let middle_cert = env::var("SSL_CERT").unwrap().replace("\n", "").replace(" ", "");
+    let end_cert = "-----END CERTIFICATE-----";
+    let cert =  format!("{begin_cert}\n{middle_cert}\n{end_cert}");
+    let begin_key = "-----BEGIN PRIVATE KEY-----";
+    let middle_key = env::var("SSL_CERT_PRIVATE_KEY").unwrap().replace("\n", "").replace(" ", "");
+    let end_key = "-----END PRIVATE KEY-----";
+    let key =  format!("{begin_key}\n{middle_key}\n{end_key}");
+
+    println!("{cert}");
+    println!("{key}");
+
+    let key = key.as_bytes().into();
+    let cert = cert.as_bytes().into();
 
     let config = RustlsConfig::from_pem(cert, key).await.unwrap();
 
