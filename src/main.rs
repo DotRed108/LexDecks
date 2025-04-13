@@ -2,11 +2,20 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() {
+    use std::path::PathBuf;
+
     use axum::Router;
+    use axum_server::tls_rustls::RustlsConfig;
     use leptos::logging::log;
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use lex_decks::app::*;
+    
+    rustls::crypto::ring::default_provider().install_default().expect("Failed to install");
+    let cert = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem");
+    let key = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem");
+
+    let config = RustlsConfig::from_pem_file(cert, key).await.expect("Could not create rustls config");
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
@@ -27,9 +36,11 @@ async fn main() {
     // `axum::Server` is a re-export of `hyper::Server`
     log!("listening on http://{}", &addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+    let std_listener = listener.into_std().unwrap();
+    axum_server::from_tcp_rustls(std_listener, config).serve(app.into_make_service()).await.unwrap();
+    // axum::serve(listener, app.into_make_service())
+    //     .await
+    //     .unwrap();
 }
 
 

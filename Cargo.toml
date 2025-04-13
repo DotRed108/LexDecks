@@ -32,6 +32,8 @@ aws-sdk-dynamodb = {version = "1.71.0", optional = true}
 serde_dynamo = {version = "4.2.14", features = ["aws-sdk-dynamodb+1"], optional = true}
 lettre = { version = "0.11.15" , default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls", "rustls-tls", "tokio1"], optional = true }
 axum-extra = {version = "0.10.1", default-features = false, features = ["cookie"], optional = true}
+axum-server = { version = "0.7.2", optional = true, features = ["tls-rustls"] }
+rustls = { version = "0.23.26", features = ["ring"], optional = true }
 
 [features]
 default = ["hydrate", "ssr"]
@@ -44,6 +46,8 @@ ssr = [
     "dep:tokio",
     "dep:leptos_axum",
     "dep:axum-extra",
+    "dep:axum-server",
+    "dep:rustls",
     "dep:lettre",
     "leptos/ssr",
     "leptos_meta/ssr",
