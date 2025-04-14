@@ -402,6 +402,10 @@ pub fn current_time_in_seconds() -> u64 {
     use_timestamp().get_untracked() as u64 / 1000
 }
 
+pub fn current_time_in_millis() -> u64 {
+    use_timestamp().get_untracked() as u64
+}
+
 pub fn full_iso_to_secs(iso_str: &str) -> Option<u64> {
     let date_time_split = iso_str.find('T');
 

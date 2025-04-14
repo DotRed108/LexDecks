@@ -14,4 +14,4 @@ Cargo.lock
 *.pdb
 
 .env
-creds.nolookie
+creds.pem

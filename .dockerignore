@@ -1,4 +1,4 @@
 target
 .git
 .gitignore
-creds.nolookie
+creds.pem

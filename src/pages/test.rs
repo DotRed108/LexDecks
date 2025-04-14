@@ -6,15 +6,49 @@ use std::sync::{
     Mutex,
 };
 
+use crate::{components::button::{Button, ButtonConfig, ButtonType}, utils_and_structs::{date_and_time::current_time_in_millis, outcomes::Outcome}};
+
 #[component]
 pub fn Test() -> impl IntoView {
     view! {
         <h2>"Some Simple Server Functions"</h2>
+        <LatencyTest/>
         <SpawnLocal/>
         <WithAnAction/>
         <WithActionForm/>
         <h2>"Alternative Encodings"</h2>
         <ServerFnArgumentExample/>
+    }
+}
+
+#[component]
+pub fn LatencyTest() -> impl IntoView {
+    #[server]
+    pub async fn test_latency(fake_input: String) -> Result<Outcome, ServerFnError> {
+        println!("hit the server");
+        return Ok(Outcome::CacheFailed(fake_input));
+    }
+    let ping = RwSignal::new(0);
+    let test_latency_action = ServerAction::<TestLatency>::new();
+    let on_send = move |_| {
+        ping.set(current_time_in_millis())
+    };
+    let on_recieve = move || {
+        ping.set(current_time_in_millis() - ping.get_untracked())
+    };
+
+    let response = test_latency_action.value();
+
+    Effect::new(move |_| {
+        response.get();
+        on_recieve();
+    });
+    view! {
+        <ActionForm action=test_latency_action>
+            <label for="latency_test">{move || ping.get()}ms</label>
+            <input style:display="none" id="latency_test" name="fake_input" required placeholder="Enter whatever you want"/>
+            <Button on:click=on_send config=ButtonConfig {button_type: ButtonType::Submit, text: "Test Latency".into(), ..Default::default()}/>
+        </ActionForm>
     }
 }
 

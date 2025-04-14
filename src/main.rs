@@ -1,5 +1,6 @@
 
 #[cfg(feature = "ssr")]
+#[allow(unused_variables)]
 #[tokio::main]
 async fn main() {
     use std::env;
@@ -16,22 +17,22 @@ async fn main() {
     // let key = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem");
 
     let begin_cert = "-----BEGIN CERTIFICATE-----";
-    let middle_cert = env::var("SSL_CERT").unwrap().replace("\n", "").replace(" ", "");
+    let middle_cert = env::var("SSL_CERT").unwrap_or_default().replace("\n", "").replace(" ", "");
     let end_cert = "-----END CERTIFICATE-----";
     let cert =  format!("{begin_cert}\n{middle_cert}\n{end_cert}");
     let begin_key = "-----BEGIN PRIVATE KEY-----";
-    let middle_key = env::var("SSL_CERT_PRIVATE_KEY").unwrap().replace("\n", "").replace(" ", "");
+    let middle_key = env::var("SSL_CERT_PRIVATE_KEY").unwrap_or_default().replace("\n", "").replace(" ", "");
     let end_key = "-----END PRIVATE KEY-----";
     let key =  format!("{begin_key}\n{middle_key}\n{end_key}");
 
-    println!("{cert}");
-    println!("{key}");
+    let key: Vec<u8> = key.as_bytes().into();
+    let cert: Vec<u8> = cert.as_bytes().into();
 
-    let key = key.as_bytes().into();
-    let cert = cert.as_bytes().into();
-
+    #[cfg(not(debug_assertions))]
     let config = RustlsConfig::from_pem(cert, key).await.unwrap();
-    // let config = RustlsConfig::from_pem_file(cert, key).await.expect("Could not create rustls config");
+
+    #[cfg(debug_assertions)]
+    let config = RustlsConfig::from_pem_file("./cert.pem", "./key.pem").await.expect("Could not create rustls config");
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
