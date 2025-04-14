@@ -31,7 +31,6 @@ async fn main() {
     let cert = cert.as_bytes().into();
 
     let config = RustlsConfig::from_pem(cert, key).await.unwrap();
-
     // let config = RustlsConfig::from_pem_file(cert, key).await.expect("Could not create rustls config");
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
