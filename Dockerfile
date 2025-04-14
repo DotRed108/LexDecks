@@ -48,8 +48,10 @@ COPY --from=builder /app/Cargo.toml /app/
 # Set any required env variables and
 ARG SOMETHING
 ENV RUST_LOG="info"
+ENV OUTPUT_NAME="lex-decks"
 ENV LEPTOS_OUTPUT_NAME="lex-decks"
 ENV LEPTOS_SITE_ROOT="site"
+ENV LEPTOS_ASSETS_DIR="assets"
 ENV LEPTOS_SITE_PKG_DIR="pkg"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
 ENV LEPTOS_RELOAD_PORT="8081"

@@ -1,4 +1,4 @@
-use leptos::{html::Input, prelude::*, task::spawn_local};
+use leptos::{html::Input, leptos_dom::logging::console_log, prelude::*, task::spawn_local};
 use server_fn::codec::GetUrl;
 #[cfg(feature = "ssr")]
 use std::sync::{
@@ -33,15 +33,21 @@ pub fn LatencyTest() -> impl IntoView {
     let on_send = move |_| {
         ping.set(current_time_in_millis())
     };
-    let on_recieve = move || {
-        ping.set(current_time_in_millis() - ping.get_untracked())
+    let on_recieve = move |outcome: Option<Result<Outcome, ServerFnError>>| {
+        let default = 99999999;
+        match outcome {
+            Some(what) => match what {
+                Ok(_uhh) => ping.set(current_time_in_millis() - ping.get_untracked()),
+                Err(e) => {console_log(&e.to_string()); ping.set(default)},
+            },
+            None => ping.set(default),
+        }
     };
 
     let response = test_latency_action.value();
 
     Effect::new(move |_| {
-        response.get();
-        on_recieve();
+        on_recieve(response.get());
     });
     view! {
         <ActionForm action=test_latency_action>
