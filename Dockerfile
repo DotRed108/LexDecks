@@ -17,6 +17,8 @@ RUN cargo binstall cargo-leptos -y
 # Add the WASM target
 RUN rustup target add wasm32-unknown-unknown
 
+RUN env
+
 # Make an /app dir, which everything will eventually live in
 RUN mkdir -p /app
 WORKDIR /app
