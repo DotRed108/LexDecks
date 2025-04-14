@@ -52,7 +52,7 @@ pub fn LatencyTest() -> impl IntoView {
     view! {
         <ActionForm action=test_latency_action>
             <label for="latency_test">{move || ping.get()}ms</label>
-            <input style:display="none" id="latency_test" name="fake_input" required placeholder="Enter whatever you want"/>
+            <input style:display="hidden" id="latency_test" name="fake_input" required placeholder="Enter whatever you want"/>
             <Button on:click=on_send config=ButtonConfig {button_type: ButtonType::Submit, text: "Test Latency".into(), ..Default::default()}/>
         </ActionForm>
     }
