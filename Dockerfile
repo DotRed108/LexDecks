@@ -46,10 +46,6 @@ COPY --from=builder /app/target/site /app/site
 COPY --from=builder /app/Cargo.toml /app/
 
 # Set any required env variables and
-ARG SSL_CERT
-ARG SSL_CERT_PRIVATE_KEY
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
 ARG SOMETHING
 ENV RUST_LOG="info"
 ENV LEPTOS_OUTPUT_NAME="lex-decks"
@@ -57,14 +53,9 @@ ENV LEPTOS_SITE_ROOT="site"
 ENV LEPTOS_SITE_PKG_DIR="pkg"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
 ENV LEPTOS_RELOAD_PORT="3001"
-ENV SSL_CERT_PRIVATE_KEY=${SSL_CERT_PRIVATE_KEY}
-ENV SSL_CERT=${SSL_CERT}
-ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 EXPOSE 3000
 
 RUN echo ${SOMETHING}
-RUN echo ${SSL_CERT}
 
 # -- NB: update binary name from "leptos_start" to match your app name in Cargo.toml --
 # Run the server
