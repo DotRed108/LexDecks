@@ -46,6 +46,10 @@ COPY --from=builder /app/target/site /app/site
 COPY --from=builder /app/Cargo.toml /app/
 
 # Set any required env variables and
+ARG SSL_CERT
+ARG SSL_CERT_PRIVATE_KEY
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
 ENV RUST_LOG="info"
 ENV LEPTOS_OUTPUT_NAME="lex-decks"
 ENV LEPTOS_SITE_ROOT="site"

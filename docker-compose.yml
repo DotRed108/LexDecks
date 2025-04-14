@@ -4,5 +4,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - SSL_CERT=${SSL_CERT}
+        - SSL_CERT_PRIVATE_KEY=${SSL_CERT_PRIVATE_KEY}
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ports:
       - "3000:3000"
