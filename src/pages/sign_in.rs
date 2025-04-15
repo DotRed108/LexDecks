@@ -445,7 +445,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
         message = msg;
     }
 
-    println!("we did not hang there");
+    println!("email built");
     let email_username = std::env::var("MAILTRAP_USERNAME").unwrap_or_default();
     let email_password = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
 
@@ -454,6 +454,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
     let Ok(smtp_bldr) = SmtpTransport::relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
     let mailer = smtp_bldr.credentials(creds).build();
 
+    println!("credentials injected");
     match mailer.send(&message) {
         Ok(response) => {
             if response.is_positive() {
@@ -462,7 +463,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
                 Outcome::EmailSendFailure("Email recieved response but failed".to_string())
             }
         },
-        Err(e) => Outcome::EmailSendFailure(format!("Email failed to send with error {e}")),
+        Err(e) => {println!("email failed right here"); Outcome::EmailSendFailure(format!("Email failed to send with error {e}"))},
     }
 }
 
