@@ -7,14 +7,14 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8.0-beta"}
+leptos = { version = "0.8.0-beta", default-features = false}
 web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument"], optional = true }
 leptos_router = { version = "0.8.0-beta" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
 leptos_axum = { version = "0.8.0-beta", optional = true }
 leptos_meta = { version = "0.8.0-beta" }
-tokio = { version = "1", features = ["full"], optional = true }
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 wasm-bindgen = { version = "=0.2.100", optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_arrays = "0.1.0"
@@ -52,6 +52,7 @@ ssr = [
     "dep:rustls",
     "dep:lettre",
     "leptos/ssr",
+    "leptos/rustls",
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "leptos-use/ssr",
