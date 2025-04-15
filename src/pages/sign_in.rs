@@ -448,8 +448,8 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
 
     let creds = Credentials::new(email_username, email_password);
 
-    let Ok(smtp_bldr) = SmtpTransport::starttls_relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
-    let mailer = smtp_bldr.credentials(creds).build();
+    let Ok(smtp_bldr) = SmtpTransport::starttls_relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string())};
+    let mailer = smtp_bldr.timeout(Some(std::time::Duration::from_secs(3))).credentials(creds).build();
 
     match mailer.send(&message) {
         Ok(response) => {
