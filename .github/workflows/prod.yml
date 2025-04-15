@@ -55,9 +55,9 @@ jobs:
           export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
           export SSL_CERT=${{ secrets.SSL_CERT }}
           export SSL_CERT_PRIVATE_KEY=${{ secrets.SSL_CERT_PRIVATE_KEY }}
-          export SENDER_EMAIL=${{ var.SENDER_EMAIL }}
+          export SENDER_EMAIL=${{ vars.SENDER_EMAIL }}
           export MAILTRAP_USERNAME=${{ secrets.MAILTRAP_USERNAME }}
           export MAILTRAP_PASSWORD=${{ secrets.MAILTRAP_PASSWORD }}
           docker-compose down
           docker-compose pull
-          docker-compose up
+          docker-compose up -d
