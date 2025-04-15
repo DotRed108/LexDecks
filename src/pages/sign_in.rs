@@ -410,7 +410,7 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
 
 #[cfg(feature = "ssr")]
 async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
-    let sender = std::env::var("SENDER_EMAIL").unwrap_or_default().replace("_", " ");
+    let sender = std::env::var("SENDER_EMAIL").unwrap_or_default().replace("_", " ").replacen("*", "<", 1).replacen("*", ">", 1);
     let recipient = format!("LexLingua User <{email_address}>");
     
     let message: Message;
