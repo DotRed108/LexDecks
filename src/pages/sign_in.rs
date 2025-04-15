@@ -389,7 +389,6 @@ struct SignInUpInputs {
 
 #[server]
 async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnError> {
-    println!("send_email");
     let email_address = &sign_in_form.email;
 
     let is_trusted = match sign_in_form.remember_me {
@@ -400,8 +399,8 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
     let client = setup_client().await;
 
     let outcome = match validate_user_standing(&client, email_address).await {
-        Outcome::PermissionGranted(_) => {println!("signing up"); sign_up_or_in(email_address, false, is_trusted).await},
-        Outcome::UserNotFound => {println!("signing in"); sign_up_or_in(email_address, true, is_trusted).await},
+        Outcome::PermissionGranted(_) => sign_up_or_in(email_address, false, is_trusted).await,
+        Outcome::UserNotFound => sign_up_or_in(email_address, true, is_trusted).await,
         any_other_outcome => return Ok(any_other_outcome)
     };
 
@@ -423,7 +422,6 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
 
     let mut redirect_url = SIGN_IN_PAGE.to_string();
 
-    println!("hi");
     if sign_up {
         redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
         redirect_url.push_str("&sign-up=true");
@@ -445,16 +443,14 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
         message = msg;
     }
 
-    println!("email built");
     let email_username = std::env::var("MAILTRAP_USERNAME").unwrap_or_default();
     let email_password = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
 
     let creds = Credentials::new(email_username, email_password);
 
-    let Ok(smtp_bldr) = SmtpTransport::relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
+    let Ok(smtp_bldr) = SmtpTransport::starttls_relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
     let mailer = smtp_bldr.credentials(creds).build();
 
-    println!("credentials injected");
     match mailer.send(&message) {
         Ok(response) => {
             if response.is_positive() {
@@ -463,7 +459,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
                 Outcome::EmailSendFailure("Email recieved response but failed".to_string())
             }
         },
-        Err(e) => {println!("email failed right here"); Outcome::EmailSendFailure(format!("Email failed to send with error {e}"))},
+        Err(e) =>  Outcome::EmailSendFailure(format!("Email failed to send with error {e}")),
     }
 }
 
