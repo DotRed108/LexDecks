@@ -374,8 +374,6 @@ use crate::utils_and_structs::{
     user_types::UserInfo, 
     shared_truth::SIGN_IN_PAGE
 };
-#[cfg(feature = "ssr")]
-use lettre::{Transport, Message, message::header::ContentType, SmtpTransport, transport::smtp::authentication::Credentials};
 
 ///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
 /// 
@@ -403,64 +401,7 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
         Outcome::UserNotFound => sign_up_or_in(email_address, true, is_trusted).await,
         any_other_outcome => return Ok(any_other_outcome)
     };
-
     Ok(outcome)
-}
-
-#[cfg(feature = "ssr")]
-async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
-    let sender = std::env::var("SENDER_EMAIL").unwrap_or_default().replace("_", " ").replacen("*", "<", 1).replacen("*", ">", 1);
-    let recipient = format!("LexLingua User <{email_address}>");
-    
-    let message: Message;
-    let message_bldr = Message::builder()
-    .from(sender.parse().unwrap())
-    .reply_to(sender.parse().unwrap())
-    .to(recipient.parse().unwrap());
-
-    let (refresh_token, auth_token, sign_up_token) = create_token(email_address, sign_up, is_trusted).await;
-
-    let mut redirect_url = SIGN_IN_PAGE.to_string();
-
-    if sign_up {
-        redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
-        redirect_url.push_str("&sign-up=true");
-        let Ok(msg) = message_bldr
-        .subject("Welcome to LexLingua")
-        .header(ContentType::TEXT_PLAIN)
-        .body(String::from(redirect_url)) else {
-            return Outcome::EmailSendFailure("email could not be built".to_string());
-        };
-        message = msg;
-    } else {
-        redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
-        let Ok(msg) = message_bldr
-        .subject("Sign in link")
-        .header(ContentType::TEXT_PLAIN)
-        .body(String::from(redirect_url)) else {
-            return Outcome::EmailSendFailure("email could not be built".to_string());
-        };
-        message = msg;
-    }
-
-    let email_username = std::env::var("MAILTRAP_USERNAME").unwrap_or_default();
-    let email_password = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
-
-    let creds = Credentials::new(email_username, email_password);
-
-    let Ok(smtp_bldr) = SmtpTransport::starttls_relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string())};
-    let mailer = smtp_bldr.timeout(Some(std::time::Duration::from_secs(3))).credentials(creds).build();
-
-    match mailer.send(&message) {
-        Ok(response) => {
-            if response.is_positive() {
-                Outcome::EmailSendSuccess
-            } else {
-                Outcome::EmailSendFailure("Email recieved response but failed".to_string())
-            }
-        },
-        Err(e) =>  Outcome::EmailSendFailure(format!("Email failed to send with error {e}")),
-    }
 }
 
 #[cfg(feature = "ssr")]
@@ -476,6 +417,45 @@ async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (
     }
 }
 
+#[cfg(feature = "ssr")]
+async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
+    let api_url = "https://send.api.mailtrap.io/api/send";
+    let api_key = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
+
+    let (refresh_token, auth_token, sign_up_token) = create_token(email_address, sign_up, is_trusted).await;
+
+    let mut redirect_url = SIGN_IN_PAGE.to_string();
+    let mut subject = "Welcome to LexLingua";
+
+    if sign_up {
+        redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
+        redirect_url.push_str("&sign-up=true");
+    } else {
+        redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
+        subject = "Sign in link";
+    }
+
+    let email_payload = serde_json::json!({
+        "from": {"email": &format!("{}", std::env::var("SENDER_EMAIL").unwrap_or_default()), "name": "LexLingua"},
+        "to": [{"email": email_address}],
+        "subject": subject,
+        "text": redirect_url,
+    });
+
+    let client = reqwest::Client::new();
+
+    let outcome = match client
+    .post(api_url)
+    .header("Accept", "application/json")
+    .header("Content-Type", "application/json")
+    .header("Api-Token", api_key)
+    .body(email_payload.to_string())
+    .send().await {
+        Ok(resp) => resp.status().is_success().then(|| Outcome::EmailSendSuccess).unwrap_or(Outcome::EmailSendFailure(resp.text().await.unwrap())),
+        Err(e) =>  Outcome::EmailSendFailure(e.to_string()),
+    };
+    outcome
+}
 ///////////////////////// HANDLES USER CREATION //////////////////////////////////////
 /// 
 /// 

@@ -55,8 +55,6 @@ ENV LEPTOS_ASSETS_DIR="assets"
 ENV LEPTOS_SITE_PKG_DIR="pkg"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
 EXPOSE 3000
-# Need to expose port for email
-EXPOSE 587
 
 RUN echo ${SOMETHING}
 

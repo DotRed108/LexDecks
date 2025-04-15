@@ -31,11 +31,11 @@ leptos_icons = { git = "https://github.com/DotRed108/leptos-icons.git" }
 aws-config = {version = "1.1.9", features = ["rustls"], optional = true}
 aws-sdk-dynamodb = {version = "1.71.0", optional = true}
 serde_dynamo = {version = "4.2.14", features = ["aws-sdk-dynamodb+1"], optional = true}
-lettre = { version = "0.11.15" , default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls", "rustls-tls", "tokio1"], optional = true }
 axum-extra = {version = "0.10.1", default-features = false, features = ["cookie"], optional = true}
 axum-server = { version = "0.7.2", optional = true, features = ["tls-rustls"] }
 rustls = { version = "0.23.26", features = ["ring"], optional = true }
 dotenvy = "0.15.7"
+reqwest = {version = "0.12.15", default-features = false, optional = true, features = ["json", "rustls-tls"]}
 
 [features]
 default = ["hydrate", "ssr"]
@@ -50,7 +50,7 @@ ssr = [
     "dep:axum-extra",
     "dep:axum-server",
     "dep:rustls",
-    "dep:lettre",
+    "dep:reqwest",
     "leptos/ssr",
     "leptos/rustls",
     "leptos_meta/ssr",
