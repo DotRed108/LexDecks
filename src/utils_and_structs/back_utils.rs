@@ -4,7 +4,7 @@ use crate::utils_and_structs::database_types::{Asset, S3Address};
 use crate::utils_and_structs::user_types::Standing;
 use pasetors::{claims::{Claims, ClaimsValidationRules}, errors::Error as PasetoError, keys::{AsymmetricPublicKey, AsymmetricSecretKey}, public, token::{TrustedToken, UntrustedToken}, version4::V4, Public};
 
-use super::shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP};
+use super::{date_and_time::current_time_in_seconds, shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}};
 
 pub const PUBLIC_DECKS_TABLE: &str = "LEXDecks";
 
@@ -22,7 +22,7 @@ pub const PRIVATE_KEY: [u8; 64] = [120, 216, 201, 41, 128, 44, 57, 121, 70, 69, 
 
 pub fn is_in_good_standing(standing: &String) -> bool {
     let standing = Standing::from_str(standing).expect("wut");
-    let current_date = get_current_date_as_secs();
+    let current_date = current_time_in_seconds();
 
     match standing {
         Standing::WUser => true,
@@ -99,15 +99,6 @@ pub fn choose_table() -> String {
     format!("{PUBLIC_DECKS_TABLE}{random_number}")
 }
 
-pub fn get_current_date_as_secs() -> u64 {
-    let current_date = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_secs(),
-        Err(_) => panic!("Could Not Get Current Date"),
-    };
-
-    current_date
-}
-
 pub fn verify_token(token: &str) -> Result<TrustedToken, PasetoError> {
     let public_key = AsymmetricPublicKey::<V4>::from(&PUBLIC_KEY)?;
     let validation_rules = ClaimsValidationRules::new();
@@ -170,13 +161,3 @@ pub fn build_auth_token(is_trusted: bool, email_address: &str) -> Result<String,
 
     Ok(auth_token)
 }
-
-
-// pub fn send_early_outcome(outcome: Outcome) -> Result<Response<Body>, Error> {
-//     let resp = Response::builder()
-//         .status(400)
-//         .header("content-type", "text/html")
-//         .body(outcome.to_string().into())
-//         .map_err(Box::new)?;
-//     Ok(resp)
-// }

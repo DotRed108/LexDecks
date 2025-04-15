@@ -33,10 +33,17 @@ pub const LOGO_PATH: &str = "../../images/NavBarLogo.webp";
 pub const CALENDAR_BG: &str = "../../images/starchart.avif";
 
 // SIGN IN
-pub const SIGN_IN_PAGE: &str = "http://localhost:3000/sign-in";
+#[cfg(not(debug_assertions))]
+pub const SIGN_IN_PAGE: &str = "https://lexlingua.io/sign-in";
+#[cfg(debug_assertions)]
+pub const SIGN_IN_PAGE: &str = "https://localhost:3000/sign-in";
 
 // KEYS
 pub const LOCAL_AUTH_TOKEN_KEY: &str = "auth-token";
 pub const LOCAL_REFRESH_TOKEN_KEY: &str = "refresh-token";
 pub const LOCAL_USER_INFO_KEY: &str = "user-info";
+pub const EXP_CLAIM_KEY: &str = "exp";
+pub const EMAIL_CLAIM_KEY: &str = "user";
 
+pub const S3_CREATION_DATE_URL_PARAM: &str = "X-Amz-Date=";
+pub const S3_EXPIRATION_URL_PARAM: &str = "X-Amz-Expires=";

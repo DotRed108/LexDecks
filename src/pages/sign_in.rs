@@ -1,8 +1,10 @@
 use std::str::FromStr;
 use leptos::{either::Either, prelude::*};
 use leptos_router::hooks::use_query_map;
-use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{front_utils::{get_claim, get_item_from_local_storage, set_cookie_value, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{shared_utilities::{get_claim, set_cookie_value, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_item_from_local_storage, store_item_in_local_storage}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
+use crate::utils_and_structs::date_and_time::current_time_in_seconds;
+
 
 #[component]
 pub fn SignIn() -> impl IntoView {
@@ -368,20 +370,12 @@ use serde_dynamo::to_item;
 #[cfg(feature = "ssr")]
 use crate::utils_and_structs::{
     dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing},
-    back_utils::{get_current_date_as_secs, get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
+    back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 
     shared_truth::SIGN_IN_PAGE
 };
 #[cfg(feature = "ssr")]
 use lettre::{Transport, Message, message::header::ContentType, SmtpTransport, transport::smtp::authentication::Credentials};
-#[cfg(feature = "ssr")]
-const SENDER_EMAIL: &str = "LexLingua <mailtrap@demomailtrap.com>";
-#[cfg(feature = "ssr")]
-const DEMO_MAILTRAP_PASSWORD: &str = "b8bd86f42193f60cc1ff4420ffb68a59";
-#[cfg(feature = "ssr")]
-const MAILTRAP_USERNAME: &str = "api";
-#[cfg(feature = "ssr")]
-const _MAILTRAP_PASSWORD: &str = "a0b103db49012c23dfd54092e886509b";
 
 ///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
 /// 
@@ -416,12 +410,13 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
 
 #[cfg(feature = "ssr")]
 async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
+    let sender = std::env::var("SENDER_EMAIL").unwrap_or_default().replace("_", " ");
     let recipient = format!("LexLingua User <{email_address}>");
     
     let message: Message;
     let message_bldr = Message::builder()
-    .from(SENDER_EMAIL.parse().unwrap())
-    .reply_to(SENDER_EMAIL.parse().unwrap())
+    .from(sender.parse().unwrap())
+    .reply_to(sender.parse().unwrap())
     .to(recipient.parse().unwrap());
 
     let (refresh_token, auth_token, sign_up_token) = create_token(email_address, sign_up, is_trusted).await;
@@ -450,7 +445,11 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
         message = msg;
     }
 
-    let creds = Credentials::new(MAILTRAP_USERNAME.to_string(), DEMO_MAILTRAP_PASSWORD.to_string());
+    println!("we did not hang there");
+    let email_username = std::env::var("MAILTRAP_USERNAME").unwrap_or_default();
+    let email_password = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
+
+    let creds = Credentials::new(email_username, email_password);
 
     let Ok(smtp_bldr) = SmtpTransport::relay("live.smtp.mailtrap.io") else {return Outcome::EmailSendFailure("Could not connect to smtp relay".to_string());};
     let mailer = smtp_bldr.credentials(creds).build();
@@ -508,7 +507,7 @@ async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device
     };
 
     let mut user = UserInfo::default();
-    let current_time = get_current_date_as_secs();
+    let current_time = current_time_in_seconds();
 
 
     user.email = user_email.to_string();

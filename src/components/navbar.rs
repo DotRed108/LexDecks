@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::{components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils_and_structs::{front_utils::UserState, shared_truth::LOGO_PATH, ui::Color}};
+use crate::{components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils_and_structs::{shared_utilities::UserState, shared_truth::LOGO_PATH, ui::Color}};
 
 #[component]
 pub fn NavBar() -> impl IntoView {

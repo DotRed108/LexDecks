@@ -1,5 +1,3 @@
-use leptos::prelude::GetUntracked;
-use leptos_use::use_timestamp;
 use partial_derive::Partial;
 use strum::Display;
 
@@ -398,12 +396,21 @@ impl ToString for Month {
     }
 }
 
-pub fn current_time_in_seconds() -> u64 {
-    use_timestamp().get_untracked() as u64 / 1000
+pub fn current_time_in_millis() -> u128 {
+    #[cfg(not(feature = "ssr"))]
+    return web_sys::js_sys::Date::now() as u128;
+    #[cfg(feature = "ssr")] {
+        let current_date = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            Ok(duration) => duration.as_millis(),
+            Err(_) => panic!("Could Not Get Current Date"),
+        };
+    
+        return current_date
+    }
 }
 
-pub fn current_time_in_millis() -> u64 {
-    use_timestamp().get_untracked() as u64
+pub fn current_time_in_seconds() -> u64 {
+    (current_time_in_millis() / 1000) as u64
 }
 
 pub fn full_iso_to_secs(iso_str: &str) -> Option<u64> {

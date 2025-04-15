@@ -4,7 +4,7 @@ use leptos_router::{
     components::{Route, Router, Routes}, hooks::use_navigate, StaticSegment
 };
 
-use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils_and_structs::{front_utils::UserState, user_types::UserInfo}};
+use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils_and_structs::{shared_utilities::UserState, user_types::UserInfo}};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -53,7 +53,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/lex-decks.css"/>
 
         // sets the document title
-        <Title text="Welcome to LexDecks"/>
+        <Title text="LexLingua"/>
 
         // content for this welcome page
         <Router>

@@ -13,8 +13,8 @@ async fn main() {
     use lex_decks::app::*;
     
     rustls::crypto::ring::default_provider().install_default().expect("Failed to install");
-    // let cert = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem");
-    // let key = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem");
+    #[cfg(debug_assertions)]
+    dotenvy::dotenv().unwrap();
 
     let begin_cert = "-----BEGIN CERTIFICATE-----";
     let middle_cert = env::var("SSL_CERT").unwrap_or_default().replace("\n", "").replace(" ", "");

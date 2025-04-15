@@ -5,7 +5,7 @@ use leptos_icons::Icon;
 use leptos_use::{use_interval_fn, utils::Pausable};
 
 use crate::utils_and_structs::date_and_time::ThreeCalendarMonths;
-use crate::utils_and_structs::front_utils::get_fake_review_schedule;
+use crate::utils_and_structs::shared_utilities::get_fake_review_schedule;
 use crate::utils_and_structs::{shared_truth::CALENDAR_BG, database_types::DeckId, date_and_time::{CalendarState, Date}, ui::{Color, Shadow}};
 
 #[component]

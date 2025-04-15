@@ -1,6 +1,6 @@
 use leptos::{html::Img, prelude::*};
 
-use crate::utils_and_structs::{front_utils::UserState, user_types::UserInfo};
+use crate::utils_and_structs::{shared_utilities::UserState, user_types::UserInfo};
 
 #[component]
 pub fn ThisUserAvatar() -> impl IntoView {

@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 leptos = { version = "0.8.0-beta"}
+web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument"], optional = true }
 leptos_router = { version = "0.8.0-beta" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
@@ -23,7 +24,7 @@ strum = { version = "0.27.1", features = ["strum_macros", "derive"] }
 take_mut = "0.2.2"
 partial_derive = "0.1.0"
 pasetors = {version = "=0.7.1", default-features = false, features = ["v4"]}
-leptos-use = "0.16.0-beta"
+leptos-use = {version = "0.16.0-beta", default-features = false, features = ["use_interval_fn"]}
 serde-wasm-bindgen = "0.6"
 icondata = { version = "0.5.0", default-features = false, features = ["lucide"]}
 leptos_icons = { git = "https://github.com/DotRed108/leptos-icons.git" }
@@ -34,10 +35,11 @@ lettre = { version = "0.11.15" , default-features = false, features = ["builder"
 axum-extra = {version = "0.10.1", default-features = false, features = ["cookie"], optional = true}
 axum-server = { version = "0.7.2", optional = true, features = ["tls-rustls"] }
 rustls = { version = "0.23.26", features = ["ring"], optional = true }
+dotenvy = "0.15.7"
 
 [features]
 default = ["hydrate", "ssr"]
-hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen",]
+hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen", "dep:web-sys",]
 ssr = [
     "dep:aws-config",
     "dep:aws-sdk-dynamodb",
@@ -53,7 +55,6 @@ ssr = [
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "leptos-use/ssr",
-    "leptos-use/axum",
     "pasetors/std",
 ]
 
