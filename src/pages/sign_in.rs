@@ -28,6 +28,10 @@ pub fn SignIn() -> impl IntoView {
     let sign_in_height = "min(var(--sign-in-element-min-height), var(--sign-in-element-max-height))";
     let shadow_size = "min(calc(5svmax - 5svh), 15px)";
     let email_input_width = "100%";
+    let mut box_shadow = Shadow::new(Color::Winter2, "0", "1px", "1px");
+    box_shadow.color_intensity = 60;
+    box_shadow.spread_radius = "".to_string();
+    let box_shadow = box_shadow.css();
     let styles = 
         format!("
         :root {{
@@ -61,31 +65,38 @@ pub fn SignIn() -> impl IntoView {
             object-fit: contain;
         }}
         .sign-in-email-input {{
-            --input-color: {lightgray};
+            --input-color: linear-gradient(#fff, #f7f7f7);
             color: {darkslate};
+            transition: all 0.3s ease 0s;
+            transition: border-width 0.15s ease-out 0s;
+            border-color: white;
             font-family: var(--font-family-default);
             font-size: min(var(--sign-in-element-pixel-size), var(--sign-in-element-font-size));
-            border: 1px solid var(--input-color);
-            background-color: var(--input-color);
+            border: none;
+            background: var(--input-color);
             text-decoration: none;
             text-align: center;
             border-radius: 3px;
             height: {sign_in_height};
             width: {email_input_width};
             max-height: var(--sign-in-element-max-height);
+            box-shadow: {box_shadow};
         }}
         .sign-in-email-input:hover {{
             text-decoration: none;
             outline: none;
             outline-width: 0;
-            box-shadow: 0 1px 1px var(--mint)
+            border: solid;
+            border-width: calc((0.6ch + 0.3svw)/2.2);
+            border-color: {frenchgray};
         }}
-
         .sign-in-email-input:focus {{
             text-decoration: none;
             outline: none;
             outline-width: 0;
-            box-shadow: 0 1px 1px var(--mint);
+            border: solid;
+            border-width: calc((0.6ch + 0.3svw)/2.2);
+            border-color: {frenchgray};
         }}
         .sign-in-button {{
             --capital-u-size: 14px;
@@ -155,9 +166,9 @@ pub fn SignIn() -> impl IntoView {
                 content: \"Up\";
             }}
         }}",
-        surround = Shadow::surrounding_shadow(Color::Winter1, shadow_size).css(),
+        surround = Shadow::surrounding_shadow(Color::Winter2, shadow_size).css(),
         darkslate = Color::DarkSlate.hex(),
-        lightgray = Color::LightGray.hex(),
+        frenchgray = Color::FrenchGray.hex(),
     );
 
     let loading_button = move || {
@@ -372,7 +383,8 @@ use crate::utils_and_structs::{
     dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing},
     back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 
-    shared_truth::SIGN_IN_PAGE
+    shared_truth::SIGN_IN_PAGE,
+    email_template::EmailTemplate,
 };
 
 ///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
@@ -426,6 +438,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
 
     let mut redirect_url = SIGN_IN_PAGE.to_string();
     let mut subject = "Welcome to LexLingua";
+    let mut html = EmailTemplate::SignUp.get_template();
 
     if sign_up {
         redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
@@ -433,13 +446,17 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
     } else {
         redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
         subject = "Sign in link";
+        html = EmailTemplate::SignIn.get_template();
     }
+
+    html = html.replace("REDIRECT_LINK", &redirect_url);
 
     let email_payload = serde_json::json!({
         "from": {"email": &format!("{}", std::env::var("SENDER_EMAIL").unwrap_or_default()), "name": "LexLingua"},
         "to": [{"email": email_address}],
         "subject": subject,
         "text": redirect_url,
+        "html": &html,
     });
 
     let client = reqwest::Client::new();

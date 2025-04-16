@@ -15,6 +15,8 @@ pub mod dynamo_utils;
 pub mod back_utils;
 #[cfg(feature = "ssr")]
 pub mod middleware;
+#[cfg(feature = "ssr")]
+pub mod email_template;
 #[cfg(feature = "hydrate")]
 pub mod front_utils;
 

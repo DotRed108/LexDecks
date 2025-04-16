@@ -11,7 +11,7 @@ h1 {
 	height: var(--header-height);
 	position: sticky;
 	top: 0;
-	background-color: var(--white);
+	background: linear-gradient(#fff, #f7f7f7);
 	border-bottom: 1px solid #d5d5d5;
 	box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
 }

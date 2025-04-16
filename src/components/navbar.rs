@@ -19,6 +19,7 @@ pub fn NavBar() -> impl IntoView {
             text_color: Color::White,
             border_color: Color::Winter3,
             background_color: Color::Winter3,
+            id: "nav_sign_in".into(),
             ..Default::default()
         };
         view! {
