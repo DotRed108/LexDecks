@@ -195,6 +195,44 @@ pub async fn get_cookie_value(name: &str) -> Option<String> {
     }
 }
 
+pub fn expiration_in_secs(token: &str) -> u64 {
+    let Ok(trusted_token) = verify_token(&token) else {return 0};
+    let Some(expiration) = get_claim(&trusted_token, EXP_CLAIM_KEY) else {return 0};
+
+    full_iso_to_secs(&expiration).unwrap_or_default()
+}
+
+pub fn time_till_expiration_in_seconds(token: &str) -> u64 {
+    expiration_in_secs(token) - current_time_in_seconds()
+}
+
+pub fn time_till_expiration_pretty(token: &str) -> String {
+    let seconds_till = time_till_expiration_in_seconds(token);
+    if seconds_till > Date::SECONDS_IN_DAY {
+        let days = seconds_till/Date::SECONDS_IN_DAY;
+        let mut plural = "";
+        if days > 1 {
+            plural = "s";
+        }
+        return format!("{days} Day{plural}");
+    } else if seconds_till > Date::SECONDS_IN_HOUR {
+        let hours = seconds_till/Date::SECONDS_IN_HOUR;
+        let mut plural = "";
+        if hours > 1 {
+            plural = "s";
+        }
+        return format!("{hours} Hour{plural}");
+    } else if seconds_till > Date::SECONDS_IN_MINUTE {
+        let minutes = seconds_till/Date::SECONDS_IN_MINUTE;
+        let mut plural = "";
+        if minutes > 1 {
+            plural = "s";
+        }
+        return format!("{minutes} Minute{plural}");
+    }
+    return "Unknown".to_string();
+}
+
 pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
     #[cfg(not(feature = "ssr"))]
     {

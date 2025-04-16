@@ -240,6 +240,10 @@ impl Date {
 
     pub const MAX_CALENDAR_DATES: usize = 42;
 
+    pub const SECONDS_IN_DAY: u64 =  86400;
+    pub const SECONDS_IN_HOUR: u64 = 3600;
+    pub const SECONDS_IN_MINUTE: u64 = 60;
+
     pub fn now() -> Date {
         let epoch = Date::UNIX_EPOCH;
 

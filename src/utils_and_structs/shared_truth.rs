@@ -28,9 +28,11 @@ pub const AUTH_TOKEN_HEADER: &str = "token";
 pub const MAX_EMAIL_SIZE: usize = 100;
 
 // ASSET LINKS
-pub const FULL_LOGO_PATH: &str = "../../images/Transparent_LexLingua_Primary Logo.png";
+pub const FULL_LOGO_PATH: &str = "../../images/MainLogo.avif";
 pub const LOGO_PATH: &str = "../../images/NavBarLogo.avif";
-pub const CALENDAR_BG: &str = "../../images/starchart.avif";
+pub const CALENDAR_BG: &str = "../../images/CalendarBG.avif";
+pub const LESSONS_IMAGE: &str = "../../images/LessonsImage.avif";
+pub const REVIEW_IMAGE: &str = "../../images/ReviewsImage.avif";
 
 // SIGN IN
 #[cfg(not(debug_assertions))]

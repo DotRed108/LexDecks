@@ -1,7 +1,7 @@
 use std::str::FromStr;
-use leptos::{either::Either, prelude::*};
+use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
 use leptos_router::hooks::use_query_map;
-use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{shared_utilities::{get_claim, set_cookie_value, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_item_from_local_storage, store_item_in_local_storage}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_item_from_local_storage, set_cookie_value, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
 use crate::utils_and_structs::date_and_time::current_time_in_seconds;
 
@@ -18,8 +18,35 @@ pub fn SignIn() -> impl IntoView {
 
     Effect::new(move || {on_load_outcome.refetch();});
 
-    let input_element = NodeRef::new();
-    let checkbox_element = NodeRef::new();
+    let name_input_ref = NodeRef::new();
+    let email_input_ref = NodeRef::new();
+
+    Effect::new(move || {
+        match email_input_ref.get() {
+            Some(_) => {
+                let element: HtmlInputElement = email_input_ref.get().unwrap();
+                element.set_attribute("required", "").ok();
+            },
+            None => proceed(),
+        }
+        match name_input_ref.get() {
+            Some(_) => {
+                let element: HtmlInputElement = name_input_ref.get().unwrap();
+                element.set_attribute("required", "").ok();
+            },
+            None => proceed(),
+        }
+    });
+
+    let remove_required = move |_| {
+        match name_input_ref.get() {
+            Some(_) => {
+                let element: HtmlInputElement = name_input_ref.get().unwrap();
+                element.remove_attribute("required").ok();
+            },
+            None => proceed(),
+        }
+    };
 
     let request_email_send = ServerAction::<SendEmail>::new();
 
@@ -41,7 +68,13 @@ pub fn SignIn() -> impl IntoView {
             --sign-in-element-height: {sign_in_height};
             --sign-in-container-gap: calc(1svmax + 2svh);
         }}
+        .gone-with-the-wind {{
+            position: absolute;
+            top: 150%;
+        }}
         form {{
+            position: relative;
+            overflow: hidden;
             width: min(98%, 30em);
             place-self: start;
             justify-self: center;
@@ -281,10 +314,12 @@ pub fn SignIn() -> impl IntoView {
                     })
                 } else {
                     Either::Right(view! {
-                        <label style:display="none" for="email"></label>
-                        <input style:height=sign_in_height maxlength=MAX_EMAIL_SIZE pattern="[^@\\s]+@[^@\\s]+\\.[^@\\s]+" class="sign-in-email-input" node_ref=input_element autocomplete="on" id="email" name="sign_in_form[email]" required placeholder="Enter Email" type="email"/>
+                        <label class="gone-with-the-wind" for="full_name"></label>
+                        <input class="sign-in-email-input gone-with-the-wind" node_ref=name_input_ref style:height=sign_in_height maxlength=MAX_EMAIL_SIZE autocomplete="new-password" id="full_name" tabindex="-60" name="sign_in_form[full_name]" type="name"/>
+                        <label class="gone-with-the-wind" for="email"></label>
+                        <input style:height=sign_in_height maxlength=MAX_EMAIL_SIZE node_ref=email_input_ref pattern="[^@\\s]+@[^@\\s]+\\.[^@\\s]+" class="sign-in-email-input" autocomplete="on" id="email" name="sign_in_form[email]" placeholder="Enter Email" on:input=remove_required type="email"/>
                         <Button config=ButtonConfig {id: "signin".into(), button_type: ButtonType::Submit, text: "Sign \u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}".to_string(), css_height: sign_in_height.into(), css_width: email_input_width.into(), class:"sign-in-button".into(), ..Default::default()}/>
-                        <SlideToggleCheckbox action_form_name="sign_in_form[remember_me]".into() checkbox_ref=checkbox_element/>
+                        <SlideToggleCheckbox action_form_name="sign_in_form[remember_me]".into()/>
                     })
                 }
             }</Show>
@@ -380,11 +415,12 @@ use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
 use serde_dynamo::to_item;
 #[cfg(feature = "ssr")]
 use crate::utils_and_structs::{
-    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing},
+    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing, validate_user_and_return_rank},
     back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 
     shared_truth::SIGN_IN_PAGE,
-    email_template::EmailTemplate,
+    email_template::{EmailTemplate, EMAIL_FIELD_1, EMAIL_FIELD_1_VALUE, EMAIL_FIELD_2, EMAIL_FIELD_2_VALUE, REDIRECT_LINK},
+    shared_utilities::time_till_expiration_pretty,
 };
 
 ///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
@@ -395,10 +431,14 @@ use crate::utils_and_structs::{
 struct SignInUpInputs {
     email: String,
     remember_me: Option<String>,
+    full_name: String,
 }
 
 #[server]
 async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnError> {
+    if !sign_in_form.full_name.is_empty() {
+        return Ok(Outcome::VerificationSuccess("You're totally not a bot".to_string()));
+    }
     let email_address = &sign_in_form.email;
 
     let is_trusted = match sign_in_form.remember_me {
@@ -408,9 +448,9 @@ async fn send_email(sign_in_form: SignInUpInputs) -> Result<Outcome, ServerFnErr
 
     let client = setup_client().await;
 
-    let outcome = match validate_user_standing(&client, email_address).await {
-        Outcome::PermissionGranted(_) => sign_up_or_in(email_address, false, is_trusted).await,
-        Outcome::UserNotFound => sign_up_or_in(email_address, true, is_trusted).await,
+    let outcome = match validate_user_and_return_rank(&client, email_address).await {
+        Outcome::PermissionGrantedReturnUser(user) => sign_up_or_in(email_address, false, is_trusted, Some(user)).await,
+        Outcome::UserNotFound => sign_up_or_in(email_address, true, is_trusted, None).await,
         any_other_outcome => return Ok(any_other_outcome)
     };
     Ok(outcome)
@@ -430,7 +470,11 @@ async fn create_token(email_address: &str, sign_up: bool, is_trusted: bool) -> (
 }
 
 #[cfg(feature = "ssr")]
-async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> Outcome {
+async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool, user: Option<UserInfo>) -> Outcome {
+    let user = match user {
+        Some(user) => user,
+        None => UserInfo::default(),
+    };
     let api_url = "https://send.api.mailtrap.io/api/send";
     let api_key = std::env::var("MAILTRAP_PASSWORD").unwrap_or_default();
 
@@ -443,13 +487,17 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool) -> 
     if sign_up {
         redirect_url.push_str(&format!("?{}={}",USER_CLAIM_SIGN_UP, &sign_up_token));
         redirect_url.push_str("&sign-up=true");
+        html = html.replace(EMAIL_FIELD_1_VALUE, "Basic").replace(EMAIL_FIELD_1, "Account type");
+        html = html.replace(EMAIL_FIELD_2_VALUE, &time_till_expiration_pretty(&sign_up_token)).replace(EMAIL_FIELD_2, "Token expires in");
     } else {
         redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
         subject = "Sign in link";
         html = EmailTemplate::SignIn.get_template();
+        html = html.replace(EMAIL_FIELD_1_VALUE, &user.rank.to_string()).replace(EMAIL_FIELD_1, "Rank");
+        html = html.replace(EMAIL_FIELD_2_VALUE, &time_till_expiration_pretty(&auth_token)).replace(EMAIL_FIELD_2, "Token expires in");
     }
 
-    html = html.replace("REDIRECT_LINK", &redirect_url);
+    html = html.replace(REDIRECT_LINK, &redirect_url);
 
     let email_payload = serde_json::json!({
         "from": {"email": &format!("{}", std::env::var("SENDER_EMAIL").unwrap_or_default()), "name": "LexLingua"},

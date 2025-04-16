@@ -248,6 +248,20 @@ pub async fn validate_user_existence(client: &Client, email: &str) -> Outcome {
     return outcome;
 }
 
+pub async fn validate_user_and_return_rank(client: &Client, email: &str) -> Outcome {
+    let attributes_to_get = [STANDING_DB_KEY, RANK_DB_KEY];
+
+    let user = match get_user(client, email, Some(&attributes_to_get.join(","))).await {
+        Outcome::UserFound(user) => user,
+        any_other_outcome => return any_other_outcome,
+    };
+
+    match permission_if_good_standing(&user) {
+        Outcome::PermissionGranted(_) => return Outcome::PermissionGrantedReturnUser(user),
+        any_other_outcome => return any_other_outcome
+    }
+}
+
 pub async fn add_deck_to_user_active_decks_and_owned_decks(client: Client, email: &str, deck_id: &str) -> Outcome {
     let email = AttributeValue::S(email.to_string());
     let Ok(id) = DeckId::from_str(deck_id) else {return Outcome::DeckCouldNotBeProcessed("Could not parse deck id".to_owned())};

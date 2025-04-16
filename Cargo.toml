@@ -8,7 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 leptos = { version = "0.8.0-beta", default-features = false}
-web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument"], optional = true }
+web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument", "HtmlInputElement"], optional = true }
 leptos_router = { version = "0.8.0-beta" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }

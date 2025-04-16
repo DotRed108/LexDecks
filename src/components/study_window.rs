@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::{components::button::{Button, ButtonConfig}, utils_and_structs::ui::{Color, Shadow}};
+use crate::{components::button::{Button, ButtonConfig}, utils_and_structs::{shared_truth::{LESSONS_IMAGE, REVIEW_IMAGE}, ui::{Color, Shadow}}};
 
 #[component]
 pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
@@ -34,8 +34,8 @@ pub fn StudyWindow(study_type: StudyType) -> impl IntoView {
     };
 
     let window_image = match study_type {
-        StudyType::Lesson => "..\\..\\images\\Transparent_LexLingua_Logomark.png",
-        StudyType::Review => "..\\..\\images\\Transparent_LexLingua_Primary Logo.png",
+        StudyType::Lesson => LESSONS_IMAGE,
+        StudyType::Review => REVIEW_IMAGE,
     };
 
     let styles = format!("

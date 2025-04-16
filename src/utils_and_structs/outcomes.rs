@@ -17,6 +17,7 @@ pub enum Outcome {
     InvalidRequest,
     UserSuspended(u64),
     PermissionGranted(String),
+    PermissionGrantedReturnUser(UserInfo),
 
     EmailSendSuccess,
     EmailSendFailure(String),
