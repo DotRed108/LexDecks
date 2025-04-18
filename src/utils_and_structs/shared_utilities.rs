@@ -1,11 +1,14 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap, future::Future};
 
 #[cfg(not(feature = "ssr"))]
 use leptos::logging::debug_warn;
+use leptos::{leptos_dom::logging::console_log, prelude::{server, GetUntracked, RwSignal, ServerFnError, Set}};
+use leptos_router::hooks::use_query_map;
+use serde::{Deserialize, Serialize};
 #[cfg(not(feature = "ssr"))]
 use web_sys::window;
 
-use super::{database_types::DeckId, date_and_time::{current_time_in_seconds, full_iso_to_secs, Date, PartialDate}, outcomes::Outcome, shared_truth::{EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, PUBLIC_KEY}, sign_in_lib::TokenPair};
+use super::{database_types::DeckId, date_and_time::{current_time_in_seconds, full_iso_to_secs, Date, PartialDate}, outcomes::Outcome, shared_truth::{EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, PUBLIC_KEY, USER_CLAIM_REFRESH}, sign_in_lib::TokenPair};
 use pasetors::{errors::{ClaimValidationError, Error}, keys::AsymmetricPublicKey, token::{TrustedToken, UntrustedToken}, version4::{self, V4}, Public};
 
 #[allow(unused)]
@@ -166,35 +169,6 @@ pub fn get_claim(token: &TrustedToken, claim_key: &str) -> Option<String> {
     Some(claim.to_string())
 }
 
-pub async fn get_cookie_value(name: &str) -> Option<String> {
-    #[cfg(not(feature = "ssr"))]
-    {
-        use leptos::web_sys::wasm_bindgen::JsCast;
-        let document = window()?.document()?;
-        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
-        let cookies = html_document.cookie().ok()?;
-
-        let value = cookies
-            .split(';')
-            .map(|c| c.trim())
-            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
-            .map(|s| s.to_string());
-
-        return value;
-    }
-
-    #[cfg(feature = "ssr")]
-    {
-        use leptos_axum::extract;
-        use axum_extra::extract::CookieJar;
-
-
-        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
-        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
-        Some(cookie_value.into())
-    }
-}
-
 pub fn expiration_in_secs(token: &str) -> u64 {
     let Ok(trusted_token) = verify_token(&token) else {return 0};
     let Some(expiration) = get_claim(&trusted_token, EXP_CLAIM_KEY) else {return 0};
@@ -257,12 +231,41 @@ pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub async fn get_cookie_value(name: &str) -> Option<String> {
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let document = window()?.document()?;
+        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
+        let cookies = html_document.cookie().ok()?;
+
+        let value = cookies
+            .split(';')
+            .map(|c| c.trim())
+            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
+            .map(|s| s.to_string());
+
+        return value;
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        use leptos_axum::extract;
+        use axum_extra::extract::CookieJar;
+
+
+        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
+        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
+        Some(cookie_value.into())
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct UserState {
     is_authenticated: bool,
-    user: &'static str,
-    token: &'static str,
-    expiration: &'static str,
+    user: Cow<'static, str>,
+    token: Cow<'static, str>,
+    expiration: Cow<'static, str>,
 }
 
 impl UserState {
@@ -294,22 +297,64 @@ impl UserState {
 
             return UserState {
                 is_authenticated: true,
-                user,
-                token,
-                expiration,
+                user: Cow::Borrowed(user),
+                token: Cow::Borrowed(token),
+                expiration: Cow::Borrowed(expiration),
             };
         }
         UserState::default()
     }
 
+    pub async fn find_token_or_default() -> Self {
+        // check cookie
+        let cookie_auth_token = get_cookie_value(LOCAL_AUTH_TOKEN_KEY).await.unwrap_or_default();
+        let user_state = UserState::from_token_or_default(&cookie_auth_token);
+        if !(user_state == UserState::default()) {
+            return user_state
+        }
+        // check local storage
+        let local_storage_auth_token = get_item_from_local_storage(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default();
+        let user_state = UserState::from_token_or_default(&local_storage_auth_token);
+        if !(user_state == UserState::default()) {
+            return user_state
+        }
+        // check for refresh token in cookie then use it to get an auth token
+        let cookie_refresh_token = get_cookie_value(LOCAL_REFRESH_TOKEN_KEY).await.unwrap_or_default();
+        let cookie_refresh_outcome = match verify_then_return_outcome(&cookie_refresh_token) {
+            Outcome::VerificationSuccess(token) => use_refresh_token(token).await.unwrap_or_default(),
+            any_other_outcome => any_other_outcome,
+        };
+        let user_state = match cookie_refresh_outcome {
+            Outcome::TokensRefreshed(tokens) => UserState::from_token_or_default(&tokens.get_auth_token()),
+            _any_other_outcome => UserState::default(),
+        };
+        if !(user_state == UserState::default()) {
+            return user_state
+        }
+        // check for refresh token in local storage then use it to get an auth token
+        let local_storage_refresh_token = get_item_from_local_storage(LOCAL_REFRESH_TOKEN_KEY).unwrap_or_default();
+        let local_storage_refresh_token = match verify_then_return_outcome(&local_storage_refresh_token) {
+            Outcome::VerificationSuccess(token) => use_refresh_token(token).await.unwrap_or_default(),
+            any_other_outcome => any_other_outcome,
+        };
+        let user_state = match local_storage_refresh_token {
+            Outcome::TokensRefreshed(tokens) => UserState::from_token_or_default(&tokens.get_auth_token()),
+            _any_other_outcome => UserState::default(),
+        };
+        if !(user_state == UserState::default()) {
+            return user_state
+        }
+        return UserState::default()
+    }
+
     pub fn user(&self) -> &str {
-        return self.user;
+        return &self.user;
     }
     pub fn token(&self) -> &str {
-        return self.token;
+        return &self.token;
     }
     pub fn expiration(&self) -> &str {
-        return self.expiration;
+        return &self.expiration;
     }
     pub fn is_authenticated(&self) -> bool {
         return self.is_authenticated;
@@ -330,3 +375,87 @@ pub fn get_fake_review_schedule(_deck_id: DeckId) -> (HashMap<PartialDate, usize
 
     return (fake_review_schedule, highest_review_amount)
 }
+
+pub fn update_signal_with_future<T, F>(signal: RwSignal<T>, future: F)
+where
+    T: 'static + Clone + Send + Sync,
+    F: Future<Output = T> + 'static + Send,
+{   
+    #[cfg(feature = "ssr")]
+    tokio::task::block_in_place(|| {
+        signal.set(tokio::runtime::Handle::current().block_on(future))
+    });
+    #[cfg(not(feature = "ssr"))]
+    leptos::task::spawn_local(async move {
+        let result = future.await;
+        signal.set(result);
+    });
+}
+
+pub fn get_url_query(key: &str) -> Option<String> {
+    let url_queries = use_query_map().get_untracked();
+
+    let query = match url_queries.get(key) {
+        Some(query) => query,
+        None => return None,
+    };
+
+    Some(query)
+}
+
+#[server]
+pub async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerFnError> {
+    #[cfg(feature="ssr")]
+    use super::{back_utils::generate_auth_token, dynamo_utils::{setup_client, validate_user_standing}};
+    let Ok(trusted_token) = verify_token(&refresh_token) else {return Ok(Outcome::VerificationFailure)};
+
+    let Some(email) = get_claim(&trusted_token, USER_CLAIM_REFRESH) else {return Ok(Outcome::VerificationFailure)};
+
+    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
+        Some(claim) => claim.parse().unwrap_or(false),
+        None => false,
+    };
+    
+    let client = setup_client().await;
+
+    let outcome = match validate_user_standing(&client, &email).await {
+        Outcome::PermissionGranted(_) => generate_auth_token(&email, &refresh_token, trusted_device),
+        any_other_outcome => return Ok(any_other_outcome),
+    };
+
+    Ok(outcome)
+}
+
+// pub fn initial_user_state() -> UserState {
+//     #[cfg(feature="ssr")]
+//     let hi = UserState::from_token_or_default(&tokio::task::block_in_place(|| {
+//         tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default()
+//     }));
+//     #[cfg(feature="ssr")]
+//     println!("initial user state on server {}", hi.user());
+//     #[cfg(feature="ssr")]
+//     return hi;
+//     #[cfg(not(feature="ssr"))]
+//     {
+//         console_log("initial user state was called");
+//         let mut char_array = [';'; 1000];
+//         leptos::task::spawn_local(async move {
+//             let result = UserState::find_token_or_default().await;
+//             for (i, char) in result.token().chars().enumerate() {
+//                 char_array[i] = char
+//             }
+//         });
+
+//         let mut last_token_end_index = 0;
+//         for (index, char) in char_array.iter().enumerate() {
+//             if *char == ';' {
+//                 last_token_end_index = index;
+//                 break;
+//             }
+//         }
+
+//         let token: String = char_array[0..last_token_end_index].iter().collect();
+//         console_log(&token);
+//         return UserState::from_token_or_default(&token);
+//     }    
+// }

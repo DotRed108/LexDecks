@@ -4,7 +4,7 @@ use crate::utils_and_structs::database_types::{Asset, S3Address};
 use crate::utils_and_structs::user_types::Standing;
 use pasetors::{claims::{Claims, ClaimsValidationRules}, errors::Error as PasetoError, keys::{AsymmetricPublicKey, AsymmetricSecretKey}, public, token::{TrustedToken, UntrustedToken}, version4::V4, Public};
 
-use super::{date_and_time::current_time_in_seconds, shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}};
+use super::{date_and_time::current_time_in_seconds, outcomes::Outcome, shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair};
 
 pub const PUBLIC_DECKS_TABLE: &str = "LEXDecks";
 
@@ -160,4 +160,16 @@ pub fn build_auth_token(is_trusted: bool, email_address: &str) -> Result<String,
     let auth_token = public::sign(&private_key, &claims, None, Some(b"implicit assertion"))?;
 
     Ok(auth_token)
+}
+
+pub fn generate_auth_token(email_address: &str, refresh_token: &str, is_trusted: bool) -> Outcome {
+    let auth_token = build_auth_token(is_trusted, email_address).unwrap();
+
+    Outcome::TokensRefreshed(TokenPair::new(refresh_token, &auth_token))
+}
+
+pub fn sleep_server(duration: Duration) {
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(tokio::time::sleep(duration))
+    });
 }

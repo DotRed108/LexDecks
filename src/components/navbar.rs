@@ -1,10 +1,11 @@
 use leptos::prelude::*;
 
-use crate::{components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils_and_structs::{shared_utilities::UserState, shared_truth::LOGO_PATH, ui::Color}};
+use crate::{app::UpdateUserState, components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils_and_structs::{shared_truth::LOGO_PATH, shared_utilities::UserState, ui::Color}};
 
 #[component]
 pub fn NavBar() -> impl IntoView {
-    let user_state = expect_context::<RwSignal<UserState>>();
+    let user_action = expect_context::<Action<UpdateUserState, UserState>>();
+    let user_state = user_action.value();
     // tuple is (name, link)
     let navbar = [("Home", "/"), ("Create Deck", "/create-deck"), ("Kanji", "#"), ("Vocabulary", "#")];
 
@@ -32,7 +33,8 @@ pub fn NavBar() -> impl IntoView {
             <nav class="navbar">
                 <a class="logo-navigator" href="/"><img class="nav-logo" src=LOGO_PATH alt="lex logo"/></a>
                 <ol class = "navlist">
-                    <Show when=move || {user_state.get().is_authenticated()} fallback=no_auth_navlist>
+                    <Suspense fallback=no_auth_navlist>
+                    <Show when=move || {user_state.get().unwrap_or_default().is_authenticated()} fallback=no_auth_navlist>
                     {navbar.into_iter().map(|(name, link)| 
                         view! {
                             <li class={format!("navlist-element {}-nav", name.to_lowercase())}>
@@ -41,10 +43,13 @@ pub fn NavBar() -> impl IntoView {
                         }
                     ).collect_view()}
                     </Show>
+                    </Suspense>
                 </ol>
-                <Show when=move || {user_state.get().is_authenticated()} fallback=sign_in_button>
+                <Suspense fallback=sign_in_button>
+                <Show when=move || {user_state.get().unwrap_or_default().is_authenticated()} fallback=sign_in_button>
                     <ThisUserAvatar/>
                 </Show>
+                </Suspense>
             </nav>
         </header>
     }

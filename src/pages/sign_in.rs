@@ -1,22 +1,27 @@
-use std::str::FromStr;
-use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
-use leptos_router::hooks::use_query_map;
-use crate::{components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_item_from_local_storage, set_cookie_value, store_item_in_local_storage, verify_then_return_outcome, verify_token, verify_token_pair, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
+use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_cookie_value, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
 use crate::utils_and_structs::date_and_time::current_time_in_seconds;
 
 
 #[component]
 pub fn SignIn() -> impl IntoView {
-    let user_state = expect_context::<RwSignal<UserState>>();
+    let user_action = expect_context::<Action<UpdateUserState, UserState>>();
 
     let subject = RwSignal::new(String::new());
     let urgent = RwSignal::new(false);
     let message = RwSignal::new(String::new());
     
-    let on_load_outcome = Resource::new(move || user_state, |user_state| on_load(user_state));
-
-    Effect::new(move || {on_load_outcome.refetch();});
+    let client_outcome = RwSignal::new(Outcome::Waiting);
+    let on_server_load = OnceResource::new_blocking(on_load_server(user_action));
+    
+    Effect::new(move || {
+        client_outcome.set(on_load(
+            on_server_load.get().unwrap_or_default(), 
+            user_action, 
+            user_action.value().get().unwrap_or_default()
+        ));
+    });
 
     let name_input_ref = NodeRef::new();
     let email_input_ref = NodeRef::new();
@@ -47,7 +52,7 @@ pub fn SignIn() -> impl IntoView {
             None => proceed(),
         }
     };
-
+    
     let request_email_send = ServerAction::<SendEmail>::new();
 
     let response = request_email_send.value();
@@ -218,16 +223,16 @@ pub fn SignIn() -> impl IntoView {
 
     let go_back = move |_| {
         response.set(None);
-        on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
+        client_outcome.set(Outcome::UnresolvedOutcome);
     };
 
     let display_response = move |outcome: Outcome| {
         match outcome {
             Outcome::UnresolvedOutcome => {
                 response.set(None);
-                on_load_outcome.set(Some(Outcome::UnresolvedOutcome));
+                client_outcome.set(Outcome::UnresolvedOutcome);
             },
-            Outcome::UserSignedIn => {
+            Outcome::UserSignedIn(_) => {
                 subject.set("You have been signed in. Continue to the home page.".into());
                 urgent.set(false);
                 message.set(String::new());
@@ -267,9 +272,9 @@ pub fn SignIn() -> impl IntoView {
                 urgent.set(true);
                 message.set(String::new());
             },
-            Outcome::UserOnlyHasRefreshToken => {
+            Outcome::UserOnlyHasRefreshToken(_) => {
                 subject.set(
-                    "You could not be signed in. Refreshing your browser might fix this. 
+                    "You were not be signed in. Refreshing your browser might fix this. 
                     If not try enabling Javascript/WASM and cookies in your browser".into()
                 );
                 urgent.set(true);
@@ -294,7 +299,10 @@ pub fn SignIn() -> impl IntoView {
             <img src=FULL_LOGO_PATH alt="LexLinguaLogo" class="sign-in-logo"/>
             <Transition fallback=loading_button>
             <Show when=move || !request_email_send.pending().get() fallback=loading_button>{
-                let load_outcome = on_load_outcome.get().unwrap_or_default();
+                let load_outcome = match client_outcome.get() {
+                    Outcome::Waiting => on_server_load.get().unwrap_or_default(),
+                    any_other_outcome => any_other_outcome,
+                };
                 let action_result = response.get();
                 if action_result.is_some() || load_outcome != Outcome::UnresolvedOutcome {
                     let mut outcome = match action_result.unwrap_or(Ok(Outcome::UnresolvedOutcome)) {
@@ -308,7 +316,7 @@ pub fn SignIn() -> impl IntoView {
                     display_response(outcome.clone());
                     Either::Left(view! {
                         <MessageBox subject urgent message width=email_input_width.into() only_subject=true top_padding="calc(var(--sign-in-element-height)/2 - 0.5em)".into()/>
-                        <Show when=move || !matches!(outcome, Outcome::UserSignedIn) fallback=continue_button>
+                        <Show when=move || !matches!(outcome, Outcome::UserSignedIn(_)) fallback=continue_button>
                         <Button on:click=go_back config=ButtonConfig {id:"goback".into(), css_height: sign_in_height.into(), text:"Go Back".into(), css_width: email_input_width.into(), ..Default::default()}/>
                         </Show>
                     })
@@ -328,60 +336,77 @@ pub fn SignIn() -> impl IntoView {
     }
 }
 
-async fn on_load(user_state: RwSignal<UserState>) -> Outcome {
-    if user_state.get_untracked().is_authenticated() {
-        return Outcome::UserSignedIn;
+async fn on_load_server(user_action: Action<UpdateUserState, UserState>) -> Outcome {
+    println!("{}", user_action.pending().get_untracked().to_string());
+    println!("{:?}", user_action.value().get_untracked());
+    if user_action.value().get_untracked().unwrap_or_default().is_authenticated() {
+        console_log("the user was already signed in");
+        return Outcome::AlreadySignedIn
     }
-    let url_queries = use_query_map().get_untracked();
+    #[allow(unused_assignments)]
+    let mut server_outcome = Outcome::UnresolvedOutcome;
+    #[cfg(feature="ssr")]
+    {
+        let sign_up_token = get_url_query(USER_CLAIM_SIGN_UP);
+        
+        let outcome = match sign_up_token {
+            Some(sign_up_token) => create_user(sign_up_token).await.unwrap_or(Outcome::CreateUserFailure("Server failure occured".into())),
+            None => {
+                let refresh_token = match get_url_query(USER_CLAIM_REFRESH) {
+                    Some(refresh_token) => Some(refresh_token),
+                    None => match get_cookie_value(LOCAL_REFRESH_TOKEN_KEY).await {
+                        Some(refresh_token) => Some(refresh_token),
+                        None => None,
+                    }
+                };
 
-    let sign_up_token = match url_queries.get(USER_CLAIM_SIGN_UP) {
-        Some(sign_up_token) => sign_up_token,
-        None => "".to_string(),
-    };
+                let token_pair = match get_url_query(USER_CLAIM_AUTH) {
+                    Some(auth_token) => Some(TokenPair::new(&refresh_token.unwrap_or_default(), &auth_token)),
+                    None => match refresh_token {
+                        Some(refresh_token) => match use_refresh_token(refresh_token).await {
+                            Ok(outcome) => match outcome {
+                                Outcome::TokensRefreshed(token_pair) => Some(token_pair),
+                                _any_other_outcome => None,
+                            },
+                            Err(_) => None,
+                        },
+                        None => None,
+                    },
+                };
 
-    if !sign_up_token.is_empty() {
-        match verify_then_return_outcome(&sign_up_token) {
-            Outcome::VerificationSuccess(token) => {
-                let outcome = create_user(token).await.unwrap_or(Outcome::CreateUserFailure("Server failure occured".into()));
-                return handle_sign_in(outcome, user_state).await;
-            },
-            any_other_outcome => return any_other_outcome,
+                match token_pair {
+                    Some(token_pair) => Outcome::HoldingTokenPair(token_pair),
+                    None => Outcome::UnresolvedOutcome,
+                }
+            }
+        };
+
+        server_outcome = match outcome.clone() {
+            Outcome::UserCreationSuccess(_) => handle_sign_in(outcome),
+            Outcome::HoldingTokenPair(_) => handle_sign_in(outcome),
+            any_other_outcome => any_other_outcome,
         }
     }
-
-    let mut on_refresh_token_failed_verify = Outcome::VerificationFailure;
-    let refresh_token = match url_queries.get(USER_CLAIM_REFRESH) {
-        Some(refresh_token) => refresh_token,
-        None => match get_item_from_local_storage(LOCAL_REFRESH_TOKEN_KEY) {
-            Some(token) => {on_refresh_token_failed_verify=Outcome::UnresolvedOutcome; token},
-            None => return Outcome::UnresolvedOutcome,
-        },
-    };
-
-    let Outcome::VerificationSuccess(refresh_token) = verify_then_return_outcome(&refresh_token) else {return on_refresh_token_failed_verify};
-
-    let token_pair = match url_queries.get(USER_CLAIM_AUTH) {
-        Some(auth_token) => TokenPair::new(&refresh_token, &auth_token),
-        None => match use_refresh_token(refresh_token).await {
-            Ok(outcome) => match outcome {
-                Outcome::TokensRefreshed(token_pair) => TokenPair::from_str(&token_pair).unwrap_or_default(),
-                any_other_outcome => return Outcome::RefreshTokenFailure(any_other_outcome.to_string()),
-            },
-            Err(e) => return Outcome::RefreshTokenFailure(e.to_string()),
-        },
-    };
-
-    if verify_token_pair(&token_pair).is_ok() {
-        return handle_sign_in(Outcome::SignInTokenPairVerified(token_pair), user_state).await;
-    } else {
-        return Outcome::VerificationFailure;
-    }
+    server_outcome
 }
 
-pub async fn handle_sign_in(outcome: Outcome, user_state: RwSignal<UserState>) -> Outcome {
+fn on_load(server_load_outcome: Outcome, user_action: Action<UpdateUserState, UserState>, user_state: UserState) -> Outcome {
+    if user_state.is_authenticated() {
+        return Outcome::UserSignedIn(TokenPair::default());
+    } else if user_action.version().get() > 2 {
+        return handle_sign_in(server_load_outcome);
+    }
+    let outcome =  handle_sign_in(server_load_outcome);
+    user_action.dispatch(UpdateUserState::Fetch);
+    return outcome
+}
+
+fn handle_sign_in(outcome: Outcome) -> Outcome {
     let tokens = match outcome {
-        Outcome::SignInTokenPairVerified(tokens) => tokens,
+        Outcome::HoldingTokenPair(tokens) => tokens,
         Outcome::UserCreationSuccess(tokens) => tokens,
+        Outcome::UserSignedIn(tokens) => tokens,
+        Outcome::UserOnlyHasRefreshToken(tokens) => tokens,
         any_other_outcome => return any_other_outcome,
     };
 
@@ -391,17 +416,13 @@ pub async fn handle_sign_in(outcome: Outcome, user_state: RwSignal<UserState>) -
     let auth_local_successful = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
     let refresh_local_successful = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
 
-    user_state.set(UserState::from_token_or_default(&tokens.get_auth_token()));
-
-    let in_client_memory = user_state.get_untracked().token() == tokens.get_auth_token() && !!!cfg!(feature="ssr");
-
-    let auth_successful = auth_local_successful || auth_cookie_successful || in_client_memory;
+    let auth_successful = auth_local_successful || auth_cookie_successful;
     let refresh_successful = refresh_local_successful || refresh_cookie_successful;
 
     if auth_successful {
-        return Outcome::UserSignedIn
+        return Outcome::UserSignedIn(tokens)
     } else if refresh_successful {
-        return Outcome::UserOnlyHasRefreshToken
+        return Outcome::UserOnlyHasRefreshToken(tokens)
     } else {
         return Outcome::UserNotSignedIn
     }
@@ -415,7 +436,7 @@ use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
 use serde_dynamo::to_item;
 #[cfg(feature = "ssr")]
 use crate::utils_and_structs::{
-    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_standing, validate_user_and_return_rank},
+    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_and_return_rank},
     back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 
     shared_truth::SIGN_IN_PAGE,
@@ -493,7 +514,7 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool, use
         redirect_url.push_str(&format!("?{}={}&{}={}",USER_CLAIM_REFRESH, &refresh_token, USER_CLAIM_AUTH, &auth_token));
         subject = "Sign in link";
         html = EmailTemplate::SignIn.get_template();
-        html = html.replace(EMAIL_FIELD_1_VALUE, &user.rank.to_string()).replace(EMAIL_FIELD_1, "Rank");
+        html = html.replace(EMAIL_FIELD_1_VALUE, &user.lex_rank.to_string()).replace(EMAIL_FIELD_1, "Rank");
         html = html.replace(EMAIL_FIELD_2_VALUE, &time_till_expiration_pretty(&auth_token)).replace(EMAIL_FIELD_2, "Token expires in");
     }
 
@@ -556,7 +577,7 @@ async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device
     user.pfp = get_default_pfp();
     user.sign_up_date = current_time;
     user.last_login = current_time;
-    user.name = "Lex".to_string();
+    user.lex_name = "Lex".to_string();
     
     let item = match to_item(user) {
         Ok(itm) => {itm},
@@ -583,37 +604,4 @@ async fn create_token_pair(email_address: &str, trusted_device: bool) -> Result<
     let refresh_token = build_refresh_token(trusted_device, email_address)?;
 
     Ok(TokenPair::new(&refresh_token, &auth_token))
-}
-
-
-///////////////////////// HANDLES REFRESH TOKENS //////////////////////////////////////
-/// 
-/// 
-
-#[server]
-async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerFnError> {
-    let Ok(trusted_token) = verify_token(&refresh_token) else {return Ok(Outcome::VerificationFailure)};
-
-    let Some(email) = get_claim(&trusted_token, USER_CLAIM_REFRESH) else {return Ok(Outcome::VerificationFailure)};
-
-    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
-        Some(claim) => claim.parse().unwrap_or(false),
-        None => false,
-    };
-    
-    let client = setup_client().await;
-
-    let outcome = match validate_user_standing(&client, &email).await {
-        Outcome::PermissionGranted(_) => generate_auth_token(&email, &refresh_token, trusted_device).await,
-        any_other_outcome => return Ok(any_other_outcome),
-    };
-
-    Ok(outcome)
-}
-
-#[cfg(feature = "ssr")]
-async fn generate_auth_token(email_address: &str, refresh_token: &str, is_trusted: bool) -> Outcome {
-    let auth_token = build_auth_token(is_trusted, email_address).unwrap();
-
-    Outcome::TokensRefreshed(TokenPair::new(refresh_token, &auth_token).to_string())
 }

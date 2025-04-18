@@ -10,10 +10,10 @@ use crate::utils_and_structs::back_utils::{PUBLIC_DECKS_TABLE, USERS_TABLE, is_i
 pub const PHONE_NUMBER_DB_KEY: &str = UserInfo::FIELD_NAMES.phone;
 pub const EMAIL_DB_KEY: &str = UserInfo::FIELD_NAMES.email;
 pub const SIGN_UP_DATE_DB_KEY: &str = UserInfo::FIELD_NAMES.sign_up_date;
-pub const USERNAME_DB_KEY: &str = UserInfo::FIELD_NAMES.name;
+pub const USERNAME_DB_KEY: &str = UserInfo::FIELD_NAMES.lex_name;
 pub const USER_TYPE_DB_KEY: &str = UserInfo::FIELD_NAMES.user_type;
 pub const UPLOAD_TOKENS_DB_KEY: &str = UserInfo::FIELD_NAMES.upload_tokens;
-pub const RANK_DB_KEY: &str = UserInfo::FIELD_NAMES.rank;
+pub const RANK_DB_KEY: &str = UserInfo::FIELD_NAMES.lex_rank;
 pub const PFP_DB_KEY: &str = UserInfo::FIELD_NAMES.pfp;
 pub const STANDING_DB_KEY: &str = UserInfo::FIELD_NAMES.standing;
 pub const ACTIVE_DECKS_DB_KEY: &str = UserInfo::FIELD_NAMES.active_decks;
@@ -253,7 +253,7 @@ pub async fn validate_user_and_return_rank(client: &Client, email: &str) -> Outc
 
     let user = match get_user(client, email, Some(&attributes_to_get.join(","))).await {
         Outcome::UserFound(user) => user,
-        any_other_outcome => return any_other_outcome,
+        any_other_outcome => {println!("{}", any_other_outcome.to_string()); return any_other_outcome},
     };
 
     match permission_if_good_standing(&user) {
@@ -261,6 +261,8 @@ pub async fn validate_user_and_return_rank(client: &Client, email: &str) -> Outc
         any_other_outcome => return any_other_outcome
     }
 }
+
+// email (String)   active_decks   colab_decks   last_login   name   owned_decks   pfp   phone   rank   settings   sign_up_date   standing   upload_tokens   user_type
 
 pub async fn add_deck_to_user_active_decks_and_owned_decks(client: Client, email: &str, deck_id: &str) -> Outcome {
     let email = AttributeValue::S(email.to_string());
