@@ -284,6 +284,8 @@ impl UserState {
             let expiration: &'static str = String::leak(expiration);
             let token: &'static str = String::leak(auth_token.to_owned());
 
+            store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, token).unwrap_or_default();
+            set_cookie_value(LOCAL_AUTH_TOKEN_KEY, token).unwrap_or_default();
             return UserState {
                 is_authenticated: true,
                 user: Cow::Borrowed(user),
@@ -334,6 +336,15 @@ impl UserState {
             return user_state
         }
         return UserState::default()
+    }
+
+    pub async fn from_token_pair(token_pair: &TokenPair) -> Self {
+        let user_state = UserState::from_token_or_default(&token_pair.get_auth_token());
+        if user_state != UserState::default() {
+            store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &token_pair.get_refresh_token()).unwrap_or_default();
+            set_cookie_value(LOCAL_REFRESH_TOKEN_KEY, &token_pair.get_refresh_token()).unwrap_or_default();
+        }
+        user_state
     }
 
     pub fn user(&self) -> &str {

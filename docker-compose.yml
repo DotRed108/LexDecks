@@ -9,6 +9,7 @@ services:
       SENDER_EMAIL: ${SENDER_EMAIL}
       MAILTRAP_USERNAME: ${MAILTRAP_USERNAME}
       MAILTRAP_PASSWORD: ${MAILTRAP_PASSWORD}
+      PASETO_PRIVATE_KEY: ${PASETO_PRIVATE_KEY}
     build:
       context: .
       dockerfile: Dockerfile

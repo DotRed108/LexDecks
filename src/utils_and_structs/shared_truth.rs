@@ -19,7 +19,7 @@ pub const MAX_ASSETS_PER_REQUEST: u8 = 25;
 pub const ONE_MONTH_IN_SECONDS: u64 = 2629800;
 
 // VERIFICATION
-pub const PUBLIC_KEY: [u8; 32] = [183, 177, 157, 57, 78, 176, 181, 67, 152, 166, 91, 120, 67, 99, 14, 16, 189, 46, 30, 75, 88, 77, 182, 203, 206, 212, 82, 16, 179, 151, 71, 24];
+pub const PUBLIC_KEY: [u8; 32] = [224,221,70,136,138,4,23,242,133,57,200,126,219,223,19,130,157,157,198,186,206,254,54,38,191,215,226,51,244,191,74,177];
 pub const USER_CLAIM_SIGN_UP: &str = "wannabe_user";
 pub const USER_CLAIM_REFRESH: &str = "refresh_user";
 pub const USER_CLAIM_AUTH: &str = "user";

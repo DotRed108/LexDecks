@@ -1,0 +1,8 @@
+[package]
+name = "genkeys"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pasetors = {version = "0.7.1"}
+lex-decks = {path = "../", features = ["ssr"]}

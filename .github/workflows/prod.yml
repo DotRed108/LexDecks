@@ -58,6 +58,7 @@ jobs:
           export SENDER_EMAIL=${{ vars.SENDER_EMAIL }}
           export MAILTRAP_USERNAME=${{ secrets.MAILTRAP_USERNAME }}
           export MAILTRAP_PASSWORD=${{ secrets.MAILTRAP_PASSWORD }}
+          export PASETO_PRIVATE_KEY=${{ secrets.PASETO_PRIVATE_KEY }}
           docker-compose down
           docker-compose pull
           docker-compose up -d

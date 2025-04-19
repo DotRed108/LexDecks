@@ -3,6 +3,7 @@ use std::{str::FromStr, time::{Duration, SystemTime, UNIX_EPOCH}};
 use crate::utils_and_structs::database_types::{Asset, S3Address};
 use crate::utils_and_structs::user_types::Standing;
 use pasetors::{claims::{Claims, ClaimsValidationRules}, errors::Error as PasetoError, keys::{AsymmetricPublicKey, AsymmetricSecretKey}, public, token::{TrustedToken, UntrustedToken}, version4::V4, Public};
+use serde::{Deserialize, Serialize};
 
 use super::{date_and_time::current_time_in_seconds, outcomes::Outcome, shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair};
 
@@ -18,7 +19,40 @@ pub const USERS_TABLE: &str = "LEXUsers";
 
 pub const UPLOAD_TOKEN_PRICE_IN_DOLLARS: f64 = 0.20;
 
-pub const PRIVATE_KEY: [u8; 64] = [120, 216, 201, 41, 128, 44, 57, 121, 70, 69, 82, 58, 153, 198, 197, 246, 43, 23, 205, 194, 157, 95, 74, 144, 87, 150, 238, 23, 49, 149, 175, 118, 183, 177, 157, 57, 78, 176, 181, 67, 152, 166, 91, 120, 67, 99, 14, 16, 189, 46, 30, 75, 88, 77, 182, 203, 206, 212, 82, 16, 179, 151, 71, 24];
+#[derive(Serialize, Deserialize)]
+pub struct PasetoPrivateKey(#[serde(with = "serde_arrays")] [u8; 64]);
+
+impl PasetoPrivateKey {
+    pub fn from_key(key: AsymmetricSecretKey<V4>) -> PasetoPrivateKey {
+        let bytes = key.as_bytes();
+        let mut byte_array = [0; 64];
+        for (index, byte) in bytes.iter().enumerate() {
+            byte_array[index] = byte.to_owned();
+        }
+        PasetoPrivateKey(byte_array)
+    }
+    pub fn get_key() -> [u8; 64] {
+        PasetoPrivateKey::from_str(&std::env::var("PASETO_PRIVATE_KEY").unwrap()).unwrap().0
+    }
+}
+
+impl ToString for PasetoPrivateKey {
+    fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
+impl FromStr for PasetoPrivateKey {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let private_key = match serde_json::from_str(s) {
+            Ok(info) => info,
+            Err(_) => return Err(()),
+        };
+        Ok(private_key)
+    }
+}
 
 pub fn is_in_good_standing(standing: &String) -> bool {
     let standing = Standing::from_str(standing).expect("wut");
@@ -122,7 +156,7 @@ pub fn build_refresh_token(is_trusted: bool, email_address: &str) -> Result<Stri
     claims.add_additional(USER_CLAIM_REFRESH, email_address)?;
     claims.add_additional(IS_TRUSTED_CLAIM, is_trusted.to_string())?;
 
-    let private_key = AsymmetricSecretKey::<V4>::from(&PRIVATE_KEY)?;
+    let private_key = AsymmetricSecretKey::<V4>::from(&PasetoPrivateKey::get_key())?;
     let refresh_token = public::sign(&private_key, &claims, None, Some(b"implicit assertion"))?;
 
     Ok(refresh_token)
@@ -135,7 +169,7 @@ pub fn build_sign_up_token(is_trusted: bool, email_address: &str) -> Result<Stri
     claims.add_additional(USER_CLAIM_SIGN_UP, email_address)?;
     claims.add_additional(IS_TRUSTED_CLAIM, is_trusted.to_string())?;
 
-    let private_key = AsymmetricSecretKey::<V4>::from(&PRIVATE_KEY)?;
+    let private_key = AsymmetricSecretKey::<V4>::from(&PasetoPrivateKey::get_key())?;
     let sign_up_token = public::sign(&private_key, &claims, None, Some(b"implicit assertion"))?;
 
     Ok(sign_up_token)
@@ -156,7 +190,7 @@ pub fn build_auth_token(is_trusted: bool, email_address: &str) -> Result<String,
     claims.add_additional(USER_CLAIM_AUTH, email_address)?;
     claims.add_additional(IS_TRUSTED_CLAIM, is_trusted.to_string())?;
 
-    let private_key = AsymmetricSecretKey::<V4>::from(&PRIVATE_KEY)?;
+    let private_key = AsymmetricSecretKey::<V4>::from(&PasetoPrivateKey::get_key())?;
     let auth_token = public::sign(&private_key, &claims, None, Some(b"implicit assertion"))?;
 
     Ok(auth_token)
