@@ -1,4 +1,4 @@
-use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
+use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
 use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_cookie_value, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
 use crate::utils_and_structs::date_and_time::current_time_in_seconds;
@@ -337,10 +337,7 @@ pub fn SignIn() -> impl IntoView {
 }
 
 async fn on_load_server(user_action: Action<UpdateUserState, UserState>) -> Outcome {
-    println!("{}", user_action.pending().get_untracked().to_string());
-    println!("{:?}", user_action.value().get_untracked());
     if user_action.value().get_untracked().unwrap_or_default().is_authenticated() {
-        console_log("the user was already signed in");
         return Outcome::AlreadySignedIn
     }
     #[allow(unused_assignments)]
@@ -410,8 +407,8 @@ fn handle_sign_in(outcome: Outcome) -> Outcome {
         any_other_outcome => return any_other_outcome,
     };
 
-    let auth_cookie_successful = set_cookie_value(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
     let refresh_cookie_successful = set_cookie_value(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
+    let auth_cookie_successful = set_cookie_value(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
 
     let auth_local_successful = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
     let refresh_local_successful = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();

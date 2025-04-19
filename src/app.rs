@@ -4,7 +4,7 @@ use leptos_router::{
     components::{Route, Router, Routes}, StaticSegment
 };
 
-use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils_and_structs::{shared_utilities::UserState, user_types::UserInfo}};
+use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils_and_structs::{shared_utilities::{initial_user_state, UserState}, user_types::UserInfo}};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -27,41 +27,26 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum UpdateUserState {
-    Reset,
+    Clear,
     Fetch,
 }
-
-// #[derive(Clone, Debug)]
-// pub struct GlobalUserResource {
-//     dispatcher: RwSignal<UpdateUserState>,
-//     resource: Resource<UserState>
-// }
-
-// impl GlobalUserResource {
-//     fn new() -> GlobalUserResource {
-//         let dispatcher = RwSignal::new(UpdateUserState::Reset);
-//         GlobalUserResource { 
-//             dispatcher, 
-//             resource: Resource::new_blocking(move || dispatcher.get(), |_hi| UserState::find_token_or_default()),
-//         }
-//     }
-// }
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    // let user_state = Resource::new_blocking(move || (), |_| async {UserState::find_token_or_default().await});
-    let user_action = Action::new(
+    let user_action = Action::new_with_value(Some(initial_user_state()),
         |update_type: &UpdateUserState| {
             let update_type = *update_type;
             async move {
                 match update_type {
-                    UpdateUserState::Reset => UserState::default(),
+                    UpdateUserState::Clear => UserState::default(),
                     UpdateUserState::Fetch => UserState::find_token_or_default().await,
                 }
             }
         }
     );
+
+    Effect::new(move || {user_action.dispatch(UpdateUserState::Fetch);});
 
     provide_context(user_action);
 

@@ -12,6 +12,7 @@ use crate::{components::button::{Button, ButtonConfig, ButtonType}, utils_and_st
 pub fn Test() -> impl IntoView {
     view! {
         <h2>"Some Simple Server Functions"</h2>
+        <CookieTester/>
         <LatencyTest/>
         <SpawnLocal/>
         <WithAnAction/>
@@ -19,6 +20,34 @@ pub fn Test() -> impl IntoView {
         <h2>"Alternative Encodings"</h2>
         <ServerFnArgumentExample/>
     }
+}
+
+#[component]
+fn CookieTester() -> impl IntoView {
+
+    let action = Action::new(|_| cookie_test());
+
+    let call_cookie_test = move |_| {
+        action.dispatch(1);
+    };
+    
+    view! {
+        <Button on:click=call_cookie_test config=ButtonConfig {text: "Test Cookies".to_string(), ..Default::default()}/>
+    }
+}
+
+#[server]
+pub async fn cookie_test() -> Result<(), ServerFnError> {
+    use leptos_axum::extract;
+    use tower_cookies::{Cookie, Cookies};
+
+    let cookies = extract::<Cookies>().await?;
+
+    cookies.add(Cookie::new("hello", "what_da"));
+
+    let hi = cookies.get("auth-token");
+    println!("{:?}", hi);
+    Ok(())
 }
 
 #[component]

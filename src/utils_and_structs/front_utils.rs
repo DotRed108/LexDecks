@@ -4,7 +4,7 @@ use super::outcomes::Outcome;
 use super::queries::ValidQueryTypes;
 use super::shared_truth::{MAX_LEVELS, S3_CREATION_DATE_URL_PARAM, S3_EXPIRATION_URL_PARAM};
 use leptos::logging::debug_warn;
-use web_sys::{self, Element, HtmlImageElement};
+use web_sys::{self, window, Element, HtmlImageElement};
 
 pub fn clear_element_classes_and_add_new(element: Element, class: String) {
     let classes = element.class_name();
@@ -127,4 +127,19 @@ pub fn frontend_query_validation(query: &ValidQueryTypes, valid_decks: DeckList)
         _ => return Outcome::InvalidRequest,
     }
     Outcome::PermissionGranted("Query Likely Valid".to_string())
+}
+
+pub fn get_cookie_value_client(cookie_name: &str) -> Option<String> {
+    use leptos::web_sys::wasm_bindgen::JsCast;
+    let document = window()?.document()?;
+    let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
+    let cookies = html_document.cookie().ok()?;
+
+    let value = cookies
+        .split(';')
+        .map(|c| c.trim())
+        .find_map(|c| c.strip_prefix(&format!("{}=", cookie_name)))
+        .map(|s| s.to_string());
+
+    return value;
 }

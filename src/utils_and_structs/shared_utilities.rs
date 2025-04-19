@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, future::Future};
 
 #[cfg(not(feature = "ssr"))]
 use leptos::logging::debug_warn;
-use leptos::{leptos_dom::logging::console_log, prelude::{server, GetUntracked, RwSignal, ServerFnError, Set}};
+use leptos::prelude::{server, GetUntracked, RwSignal, ServerFnError, Set};
 use leptos_router::hooks::use_query_map;
 use serde::{Deserialize, Serialize};
 #[cfg(not(feature = "ssr"))]
@@ -207,12 +207,14 @@ pub fn time_till_expiration_pretty(token: &str) -> String {
     return "Unknown".to_string();
 }
 
+/// If this function is called on the server more than once during the same http request
+/// the cookies set in the latest call will override the cookies set in an earlier call
 pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
     #[cfg(not(feature = "ssr"))]
     {
         use leptos::web_sys::wasm_bindgen::JsCast;
         let Ok(html_document) = leptos::prelude::document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
-        _ = html_document.set_cookie(&format!("{name}={value}"));
+        _ = html_document.set_cookie(&format!("{name}={value}; Path=/api; Max-age=3600"));
         return Ok(());
     }
 
@@ -233,30 +235,17 @@ pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
 
 pub async fn get_cookie_value(name: &str) -> Option<String> {
     #[cfg(not(feature = "ssr"))]
-    {
-        use leptos::web_sys::wasm_bindgen::JsCast;
-        let document = window()?.document()?;
-        let html_document = document.dyn_into::<leptos::web_sys::HtmlDocument>().ok()?;
-        let cookies = html_document.cookie().ok()?;
-
-        let value = cookies
-            .split(';')
-            .map(|c| c.trim())
-            .find_map(|c| c.strip_prefix(&format!("{}=", name)))
-            .map(|s| s.to_string());
-
-        return value;
-    }
+    return super::front_utils::get_cookie_value_client(name);
 
     #[cfg(feature = "ssr")]
     {
         use leptos_axum::extract;
-        use axum_extra::extract::CookieJar;
+        use tower_cookies::Cookies;
 
-
-        let cookie = extract::<CookieJar>().await.ok()?.get(name)?.to_string();
-        let (_cookie_name, cookie_value) = cookie.split_once('=').unwrap_or_default();
-        Some(cookie_value.into())
+        let cookies = extract::<Cookies>().await.ok()?;
+        let cookie = cookies.get(name);
+        let Some(cookie) = cookie else {return None};
+        Some(cookie.value_trimmed().to_string())
     }
 }
 
@@ -426,36 +415,11 @@ pub async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerF
     Ok(outcome)
 }
 
-// pub fn initial_user_state() -> UserState {
-//     #[cfg(feature="ssr")]
-//     let hi = UserState::from_token_or_default(&tokio::task::block_in_place(|| {
-//         tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default()
-//     }));
-//     #[cfg(feature="ssr")]
-//     println!("initial user state on server {}", hi.user());
-//     #[cfg(feature="ssr")]
-//     return hi;
-//     #[cfg(not(feature="ssr"))]
-//     {
-//         console_log("initial user state was called");
-//         let mut char_array = [';'; 1000];
-//         leptos::task::spawn_local(async move {
-//             let result = UserState::find_token_or_default().await;
-//             for (i, char) in result.token().chars().enumerate() {
-//                 char_array[i] = char
-//             }
-//         });
-
-//         let mut last_token_end_index = 0;
-//         for (index, char) in char_array.iter().enumerate() {
-//             if *char == ';' {
-//                 last_token_end_index = index;
-//                 break;
-//             }
-//         }
-
-//         let token: String = char_array[0..last_token_end_index].iter().collect();
-//         console_log(&token);
-//         return UserState::from_token_or_default(&token);
-//     }    
-// }
+pub fn initial_user_state() -> UserState {
+    #[cfg(feature="ssr")]
+    return UserState::from_token_or_default(&tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default()
+    }));
+    #[cfg(not(feature="ssr"))]
+    return UserState::from_token_or_default(&super::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default());  
+}
