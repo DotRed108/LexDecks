@@ -11,7 +11,7 @@ pub fn Home() -> impl IntoView {
     let deck_list = DeckList::default();
     let subject = RwSignal::new("Welcome to LexDecks! Here are your reviews and lessons for the day.".to_string());
     let urgent = RwSignal::new(false);
-    let message = RwSignal::new("gay".to_string());
+    let message = RwSignal::new("hi".to_string());
 
     view! {
         <MessageBox subject urgent message margin_top="var(--default-div-margin)".into()/>

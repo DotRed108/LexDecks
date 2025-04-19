@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(not(feature = "ssr"))]
 use web_sys::window;
 
-use super::{database_types::DeckId, date_and_time::{current_time_in_seconds, full_iso_to_secs, Date, PartialDate}, outcomes::Outcome, shared_truth::{EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, PUBLIC_KEY, USER_CLAIM_REFRESH}, sign_in_lib::TokenPair};
+use super::{database_types::DeckId, date_and_time::{current_time_in_seconds, full_iso_to_secs, Date, PartialDate}, outcomes::Outcome, shared_truth::{EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH}, sign_in_lib::TokenPair};
 use pasetors::{errors::{ClaimValidationError, Error}, keys::AsymmetricPublicKey, token::{TrustedToken, UntrustedToken}, version4::{self, V4}, Public};
 
 #[allow(unused)]
@@ -207,22 +207,34 @@ pub fn time_till_expiration_pretty(token: &str) -> String {
     return "Unknown".to_string();
 }
 
-/// If this function is called on the server more than once during the same http request
-/// the cookies set in the latest call will override the cookies set in an earlier call
-pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
+pub fn set_token_cookie(token: &str) -> Result<(), ()> {
+    let Ok(trusted_token) = verify_token(token) else {return Err(())};
+    let name = match get_claim(&trusted_token, USER_CLAIM_REFRESH) {
+        Some(_) => LOCAL_REFRESH_TOKEN_KEY,
+        None => match get_claim(&trusted_token, USER_CLAIM_AUTH) {
+            Some(_) => LOCAL_AUTH_TOKEN_KEY,
+            None => return Err(()),
+        }
+    };
+    let expiration = time_till_expiration_in_seconds(token);
+    
+    set_cookie_value(name, token, expiration)
+}
+
+pub fn set_cookie_value(name: &str, value: &str, expiration: u64) -> Result<(), ()> {
+    let cookie_string = format!("{name}={value}; Path=/; Max-age={expiration}; Secure=true; SameSite=Strict;");
     #[cfg(not(feature = "ssr"))]
     {
         use leptos::web_sys::wasm_bindgen::JsCast;
         let Ok(html_document) = leptos::prelude::document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
-        _ = html_document.set_cookie(&format!("{name}={value}; Path=/; Max-age=3600"));
+        _ = html_document.set_cookie(&cookie_string);
         return Ok(());
     }
 
     #[cfg(feature = "ssr")]
     {
         let res = leptos::prelude::expect_context::<leptos_axum::ResponseOptions>();
-        let cookie_value = format!("{name}={value}; Path=/; Max-Age=31536000");
-        let header_value = axum::http::HeaderValue::from_str(&cookie_value);
+        let header_value = axum::http::HeaderValue::from_str(&cookie_string);
 
         if let Ok(header_value) = header_value {
             res.append_header(axum::http::header::SET_COOKIE, header_value);
@@ -285,7 +297,7 @@ impl UserState {
             let token: &'static str = String::leak(auth_token.to_owned());
 
             store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, token).unwrap_or_default();
-            set_cookie_value(LOCAL_AUTH_TOKEN_KEY, token).unwrap_or_default();
+            set_token_cookie(token).unwrap_or_default();
             return UserState {
                 is_authenticated: true,
                 user: Cow::Borrowed(user),
@@ -342,7 +354,7 @@ impl UserState {
         let user_state = UserState::from_token_or_default(&token_pair.get_auth_token());
         if user_state != UserState::default() {
             store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &token_pair.get_refresh_token()).unwrap_or_default();
-            set_cookie_value(LOCAL_REFRESH_TOKEN_KEY, &token_pair.get_refresh_token()).unwrap_or_default();
+            set_token_cookie(&token_pair.get_refresh_token()).unwrap_or_default();
         }
         user_state
     }
