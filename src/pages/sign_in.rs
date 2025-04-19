@@ -379,8 +379,8 @@ async fn on_load_server(user_action: Action<UpdateUserState, UserState>) -> Outc
         };
 
         server_outcome = match outcome.clone() {
-            Outcome::UserCreationSuccess(_) => handle_sign_in(outcome),
-            Outcome::HoldingTokenPair(_) => handle_sign_in(outcome),
+            Outcome::UserCreationSuccess(_) => handle_sign_in(outcome, user_action),
+            Outcome::HoldingTokenPair(_) => handle_sign_in(outcome, user_action),
             any_other_outcome => any_other_outcome,
         }
     }
@@ -391,14 +391,14 @@ fn on_load(server_load_outcome: Outcome, user_action: Action<UpdateUserState, Us
     if user_state.is_authenticated() {
         return Outcome::UserSignedIn(TokenPair::default());
     } else if user_action.version().get() > 2 {
-        return handle_sign_in(server_load_outcome);
+        return handle_sign_in(server_load_outcome, user_action);
     }
-    let outcome =  handle_sign_in(server_load_outcome);
+    let outcome =  handle_sign_in(server_load_outcome, user_action);
     user_action.dispatch(UpdateUserState::Fetch);
     return outcome
 }
 
-fn handle_sign_in(outcome: Outcome) -> Outcome {
+fn handle_sign_in(outcome: Outcome, user_action: Action<UpdateUserState, UserState>) -> Outcome {
     let tokens = match outcome {
         Outcome::HoldingTokenPair(tokens) => tokens,
         Outcome::UserCreationSuccess(tokens) => tokens,
@@ -417,6 +417,7 @@ fn handle_sign_in(outcome: Outcome) -> Outcome {
     let refresh_successful = refresh_local_successful || refresh_cookie_successful;
 
     if auth_successful {
+        user_action.value().set(Some(UserState::from_token_or_default(&tokens.get_auth_token())));
         return Outcome::UserSignedIn(tokens)
     } else if refresh_successful {
         return Outcome::UserOnlyHasRefreshToken(tokens)

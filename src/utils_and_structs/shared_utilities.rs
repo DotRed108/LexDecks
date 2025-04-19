@@ -214,7 +214,7 @@ pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
     {
         use leptos::web_sys::wasm_bindgen::JsCast;
         let Ok(html_document) = leptos::prelude::document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
-        _ = html_document.set_cookie(&format!("{name}={value}; Path=/api; Max-age=3600"));
+        _ = html_document.set_cookie(&format!("{name}={value}; Path=/; Max-age=3600"));
         return Ok(());
     }
 
@@ -225,7 +225,7 @@ pub fn set_cookie_value(name: &str, value: &str) -> Result<(), ()> {
         let header_value = axum::http::HeaderValue::from_str(&cookie_value);
 
         if let Ok(header_value) = header_value {
-            res.insert_header(axum::http::header::SET_COOKIE, header_value);
+            res.append_header(axum::http::header::SET_COOKIE, header_value);
             return Ok(());
         } else {
             return Err(());

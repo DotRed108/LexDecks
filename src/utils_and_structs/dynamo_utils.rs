@@ -241,10 +241,7 @@ pub async fn validate_user_standing(client: &Client, email: &str) -> Outcome {
 }
 
 pub async fn validate_user_existence(client: &Client, email: &str) -> Outcome {
-    println!("email: {email}");
     let outcome = get_user(client, email, Some(STANDING_DB_KEY)).await;
-
-    println!("{}", outcome.to_string());
     return outcome;
 }
 

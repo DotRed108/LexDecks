@@ -46,7 +46,7 @@ pub fn App() -> impl IntoView {
         }
     );
 
-    Effect::new(move || {user_action.dispatch(UpdateUserState::Fetch);});
+    // Effect::new(move || {user_action.dispatch(UpdateUserState::Fetch);});
 
     provide_context(user_action);
 
