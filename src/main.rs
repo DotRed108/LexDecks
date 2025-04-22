@@ -9,29 +9,23 @@ async fn main() {
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use lex_decks::{app::*, utils::middleware::auth_middleware};
-    use std::sync::Arc;
+    use std::{net::SocketAddr, sync::Arc};
     use tower_cookies::CookieManagerLayer;
     use tower_governor::{governor::GovernorConfig, GovernorLayer};
     
-    println!("server started");
     rustls::crypto::ring::default_provider().install_default().expect("Failed to install");
     #[cfg(debug_assertions)]
     dotenvy::dotenv().unwrap();
 
     let governor_conf = Arc::new(GovernorConfig::default());
-    
     let governor_limiter = governor_conf.limiter().clone();
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-    println!("rate limiter init");
     let clean_up_governor = tokio::task::spawn(async move {
         loop {
             interval.tick().await;
             governor_limiter.retain_recent();
         }
     });
-
-    clean_up_governor.await.unwrap();
-    println!("rate limiter cleanup");
 
     let key: Vec<u8> = create_ssl_key().as_bytes().into();
     let cert: Vec<u8> = create_ssl_cert().as_bytes().into();
@@ -42,7 +36,6 @@ async fn main() {
     #[cfg(debug_assertions)]
     let config = RustlsConfig::from_pem_file("./cert.pem", "./key.pem").await.expect("Could not create rustls config");
 
-    println!("ssl cert init");
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -50,7 +43,6 @@ async fn main() {
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
 
-    println!("routes config init");
     let app = Router::new()
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
@@ -62,17 +54,12 @@ async fn main() {
         .layer(GovernorLayer {config: governor_conf})
         .with_state(leptos_options);
     
-    println!("routes init");
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
     log!("listening on http://{}", &addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     let std_listener = listener.into_std().unwrap();
-    println!("boutta serve");
-    axum_server::from_tcp_rustls(std_listener, config).serve(app.into_make_service()).await.unwrap();
-    // axum::serve(listener, app.into_make_service())
-    //     .await
-    //     .unwrap();
+    axum_server::from_tcp_rustls(std_listener, config)
+    .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+    .await.unwrap();
 }
 
 fn create_ssl_cert() -> String {

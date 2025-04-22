@@ -1,4 +1,4 @@
-use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
+use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
 use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils::{ outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_token_cookie, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
 use crate::utils::date_and_time::current_time_in_seconds;
@@ -393,7 +393,9 @@ async fn on_load_server(user_action: Action<UpdateUserState, UserState>) -> Outc
 }
 
 fn on_load(server_load_outcome: Outcome, user_action: Action<UpdateUserState, UserState>, user_state: UserState) -> Outcome {
-    if user_state.is_authenticated() && user_action.version().get() != 0 {
+    if user_action.version().get() == 0 {
+        proceed()
+    } else if user_state.is_authenticated() {
         return Outcome::UserSignedIn(TokenPair::default());
     } else if user_action.version().get() > 1 {
         return handle_sign_in(server_load_outcome, user_action);
@@ -412,29 +414,26 @@ fn handle_sign_in(outcome: Outcome, user_action: Action<UpdateUserState, UserSta
         #[cfg(not(feature="ssr"))]
         Outcome::AlreadySignedIn => {
             let refresh_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_REFRESH_TOKEN_KEY).unwrap_or_default();
-            if verify_token(&refresh_token).is_ok() {
-                store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &refresh_token).unwrap_or_default();
-            };
             let auth_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default();
-            if verify_token(&auth_token).is_ok() {
-                store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &auth_token).unwrap_or_default();
-            };
-            return Outcome::UserSignedIn(TokenPair::new(&refresh_token, &auth_token));
+            TokenPair::new(&refresh_token, &auth_token)
         },
         any_other_outcome => return any_other_outcome,
     };
 
-    console_log("is this running on the client 2");
-    let refresh_cookie_successful = set_token_cookie(&tokens.get_refresh_token()).is_ok();
-    let auth_cookie_successful = set_token_cookie(&tokens.get_auth_token()).is_ok();
+    let auth_successful = if verify_token(&tokens.get_auth_token()).is_ok() {
+        set_token_cookie(&tokens.get_auth_token()).is_ok() || store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok()
+    } else {
+        false
+    };
 
-    let auth_local_successful = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
-    let refresh_local_successful = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
-
-    let auth_successful = auth_local_successful || auth_cookie_successful;
-    let refresh_successful = refresh_local_successful || refresh_cookie_successful;
+    let refresh_successful = if verify_token(&tokens.get_refresh_token()).is_ok() {
+        set_token_cookie(&tokens.get_refresh_token()).is_ok() || store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok()
+    } else {
+        false
+    };
 
     if auth_successful {
+        user_action.version().set(user_action.version().get_untracked() + 1);
         user_action.value().set(Some(UserState::from_token_or_default(&tokens.get_auth_token())));
         return Outcome::UserSignedIn(tokens)
     } else if refresh_successful {

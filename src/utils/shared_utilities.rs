@@ -447,3 +447,14 @@ pub fn initial_user_state() -> UserState {
     #[cfg(not(feature="ssr"))]
     return UserState::from_token_or_default(&super::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default());  
 }
+
+pub fn excluded_from_auth(url: String) -> bool {
+    let excluded_server_functions = ["send_email", "use_refresh_token", "create_user"];
+
+    for function_name in excluded_server_functions {
+        if url.contains(function_name) {
+            return true;
+        }
+    }
+    false
+}
