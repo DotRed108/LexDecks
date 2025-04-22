@@ -11,13 +11,13 @@ resolver = "2"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8.0-beta", default-features = false}
+leptos = { version = "=0.8.0-beta", default-features = false}
 web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument", "HtmlInputElement"], optional = true }
-leptos_router = { version = "0.8.0-beta" }
+leptos_router = { version = "=0.8.0-beta" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
-leptos_axum = { version = "0.8.0-beta", optional = true }
-leptos_meta = { version = "0.8.0-beta" }
+leptos_axum = { version = "=0.8.0-beta", optional = true }
+leptos_meta = { version = "=0.8.0-beta" }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 wasm-bindgen = { version = "=0.2.100", optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -28,7 +28,7 @@ strum = { version = "0.27.1", features = ["strum_macros", "derive"] }
 take_mut = "0.2.2"
 partial_derive = "0.1.0"
 pasetors = {version = "=0.7.1", default-features = false, features = ["v4"]}
-leptos-use = {version = "0.16.0-beta", default-features = false, features = ["use_interval_fn"]}
+leptos-use = {version = "=0.16.0-beta", default-features = false, features = ["use_interval_fn"]}
 serde-wasm-bindgen = "0.6"
 icondata = { version = "0.5.0", default-features = false, features = ["lucide"]}
 leptos_icons = { git = "https://github.com/DotRed108/leptos-icons.git" }
@@ -43,7 +43,7 @@ reqwest = {version = "0.12.15", default-features = false, optional = true, featu
 tower-cookies = { version = "0.11.0", optional = true }
 tower_governor = { version = "0.7.0", optional = true }
 indexed-db = {version = "0.4.2", optional = true }
-server_fn = {version = "0.8.0-beta", default-features = false, features = ["browser", "rustls"]}
+server_fn = {version = "=0.8.0-beta", default-features = false, features = ["browser", "rustls"]}
 futures = "0.3.31"
 
 [features]
