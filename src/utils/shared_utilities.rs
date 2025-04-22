@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(not(feature = "ssr"))]
 use web_sys::window;
 
+
 use super::{database_types::DeckId, date_and_time::{current_time_in_seconds, full_iso_to_secs, Date, PartialDate}, outcomes::Outcome, shared_truth::{EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH}, sign_in_lib::TokenPair};
 use pasetors::{errors::{ClaimValidationError, Error}, keys::AsymmetricPublicKey, token::{TrustedToken, UntrustedToken}, version4::{self, V4}, Public};
 
@@ -418,7 +419,7 @@ pub fn get_url_query(key: &str) -> Option<String> {
 #[server]
 pub async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerFnError> {
     #[cfg(feature="ssr")]
-    use super::{back_utils::generate_auth_token, dynamo_utils::{setup_client, validate_user_standing}};
+    use crate::utils::{back_utils::generate_auth_token, dynamo_utils::{setup_client, validate_user_standing}};
     let Ok(trusted_token) = verify_token(&refresh_token) else {return Ok(Outcome::VerificationFailure)};
 
     let Some(email) = get_claim(&trusted_token, USER_CLAIM_REFRESH) else {return Ok(Outcome::VerificationFailure)};

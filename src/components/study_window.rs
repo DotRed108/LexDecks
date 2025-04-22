@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::{components::button::{Button, ButtonConfig}, utils_and_structs::{shared_truth::{LESSONS_IMAGE, REVIEW_IMAGE}, ui::{Color, Shadow}}};
+use crate::{components::button::{Button, ButtonConfig}, utils::{shared_truth::{LESSONS_IMAGE, REVIEW_IMAGE}, ui::{Color, Shadow}}};
 
 #[component]
 pub fn StudyWindow(study_type: StudyType) -> impl IntoView {

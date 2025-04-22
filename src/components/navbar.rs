@@ -1,13 +1,13 @@
 use leptos::prelude::*;
 
-use crate::{app::UpdateUserState, components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils_and_structs::{shared_truth::LOGO_PATH, shared_utilities::UserState, ui::Color}};
+use crate::{app::UpdateUserState, components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils::{shared_truth::LOGO_PATH, shared_utilities::UserState, ui::Color}};
 
 #[component]
 pub fn NavBar() -> impl IntoView {
     let user_action = expect_context::<Action<UpdateUserState, UserState>>();
     let user_state = user_action.value();
     // tuple is (name, link)
-    let navbar = [("Home", "/"), ("Create Deck", "/create-deck"), ("Kanji", "#"), ("Vocabulary", "#")];
+    let navbar = [("Home", "/"), ("Create Deck", "/create-deck"), ("Import Deck", "#"), ("Search", "#")];
 
     let no_auth_navlist = || view! {
         <h1 style:margin="0" style:font-size="1.8em">"LexLingua"</h1>

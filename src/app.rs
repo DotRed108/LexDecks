@@ -4,7 +4,7 @@ use leptos_router::{
     components::{Route, Router, Routes}, StaticSegment
 };
 
-use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils_and_structs::{shared_utilities::{initial_user_state, UserState}, user_types::UserInfo}};
+use crate::{components::navbar::NavBar, pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test}, utils::{shared_utilities::{initial_user_state, UserState}, user_types::UserInfo}};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {

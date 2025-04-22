@@ -6,7 +6,7 @@ use std::sync::{
     Mutex,
 };
 
-use crate::{components::button::{Button, ButtonConfig, ButtonType}, utils_and_structs::{date_and_time::current_time_in_millis, outcomes::Outcome}};
+use crate::{components::button::{Button, ButtonConfig, ButtonType}, utils::{date_and_time::current_time_in_millis, outcomes::Outcome}};
 
 #[component]
 pub fn Test() -> impl IntoView {

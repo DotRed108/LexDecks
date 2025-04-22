@@ -1,9 +1,12 @@
 use std::{str::FromStr, time::{Duration, SystemTime, UNIX_EPOCH}};
 
-use crate::utils_and_structs::database_types::{Asset, S3Address};
-use crate::utils_and_structs::user_types::Standing;
+use crate::utils::database_types::{Asset, S3Address};
+use crate::utils::user_types::Standing;
+use axum::http::HeaderMap;
 use pasetors::{claims::{Claims, ClaimsValidationRules}, errors::Error as PasetoError, keys::{AsymmetricPublicKey, AsymmetricSecretKey}, public, token::{TrustedToken, UntrustedToken}, version4::V4, Public};
 use serde::{Deserialize, Serialize};
+use server_fn::ServerFnError;
+use leptos_axum::extract;
 
 use super::{date_and_time::current_time_in_seconds, outcomes::Outcome, shared_truth::{IS_TRUSTED_CLAIM, PUBLIC_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, sign_in_lib::TokenPair};
 
@@ -206,4 +209,22 @@ pub fn sleep_server(duration: Duration) {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(tokio::time::sleep(duration))
     });
+}
+
+pub async fn verify_user_header() -> Outcome {
+    let Ok(headers): Result<HeaderMap, ServerFnError> = extract().await else {return Outcome::VerificationFailure};
+    let email = match headers.get(USER_CLAIM_AUTH) {
+        Some(header) => header.to_str().unwrap_or_default(),
+        None => return Outcome::VerificationFailure,
+    };
+
+    if email.is_empty() {
+        return Outcome::VerificationFailure;
+    } else if !!!email.contains('@') {
+        return Outcome::VerificationFailure;
+    } else if email.len() < 4 {
+        return Outcome::VerificationFailure;
+    }
+
+    Outcome::VerificationSuccess(email.to_string())
 }

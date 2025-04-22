@@ -24,7 +24,7 @@ pub const USER_CLAIM_SIGN_UP: &str = "wannabe_user";
 pub const USER_CLAIM_REFRESH: &str = "refresh_user";
 pub const USER_CLAIM_AUTH: &str = "user";
 pub const IS_TRUSTED_CLAIM: &str = "trusted";
-pub const AUTH_TOKEN_HEADER: &str = "token";
+pub const AUTH_TOKEN_HEADER: &str = "Authorization";
 pub const MAX_EMAIL_SIZE: usize = 100;
 
 // ASSET LINKS

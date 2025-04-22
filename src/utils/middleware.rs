@@ -1,3 +1,38 @@
+use axum::{
+    body::Body, extract::Request, http::{HeaderValue, Method, Response}, middleware::Next
+};
+
+use crate::utils::{outcomes::Outcome, shared_truth::{AUTH_TOKEN_HEADER, USER_CLAIM_AUTH}, shared_utilities::verify_token};
+
+pub async fn auth_middleware(
+    mut request: Request,
+    next: Next,
+) -> Response<Body> {
+    println!("hello");
+    if request.method() != Method::GET {
+        let early_response = Response::builder().status(404).body(Outcome::VerificationFailure.to_string().into()).unwrap_or_default();
+        println!("my middleware is running");
+        println!("{}", request.uri());
+        let headers = request.headers_mut();
+        let Some(auth_header) = headers.get(AUTH_TOKEN_HEADER) else {return early_response};
+        let Ok(trusted_token) = verify_token(auth_header.to_str().unwrap_or_default()) else {return early_response};
+        
+        let Some(claims) = trusted_token.payload_claims() else {return early_response};
+        let Some(email) = claims.get_claim(USER_CLAIM_AUTH) else {return early_response};
+        let Some(email) = email.as_str() else {return early_response};
+
+        let Ok(email) = HeaderValue::from_str(email) else {return early_response};
+
+        headers.append(USER_CLAIM_AUTH, email);
+    };
+
+    let response = next.run(request).await;
+
+    // do something with `response`...
+
+    response
+}
+
 // use axum::body::Body;
 // use http::Request;
 // use pin_project_lite::pin_project;

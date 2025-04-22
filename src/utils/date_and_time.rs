@@ -1,7 +1,7 @@
 use partial_derive::Partial;
 use strum::Display;
 
-use crate::utils_and_structs::proceed;
+use crate::utils::proceed;
 
 #[derive(Clone, Copy)]
 pub struct ThreeCalendarMonths {

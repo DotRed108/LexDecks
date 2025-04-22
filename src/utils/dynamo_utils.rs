@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_dynamodb::{types::AttributeValue, Client};
-use crate::utils_and_structs::{database_types::{DBItem, DeckId, DeckList, Note, UpdateRecipe, UpdateRecipes, UpdateType, UpdateValues}, user_types::{PartialUserInfo, Standing, UserInfo}, outcomes::Outcome, proceed, shared_truth::DECK_LIMIT};
+use crate::utils::{database_types::{DBItem, DeckId, DeckList, Note, UpdateRecipe, UpdateRecipes, UpdateType, UpdateValues}, user_types::{PartialUserInfo, Standing, UserInfo}, outcomes::Outcome, proceed, shared_truth::DECK_LIMIT};
 use serde_dynamo::{aws_sdk_dynamodb_1::to_attribute_value, from_item};
-use crate::utils_and_structs::back_utils::{PUBLIC_DECKS_TABLE, USERS_TABLE, is_in_active_decks};
+use crate::utils::back_utils::{PUBLIC_DECKS_TABLE, USERS_TABLE, is_in_active_decks};
 
 // User DB keys
 pub const PHONE_NUMBER_DB_KEY: &str = UserInfo::FIELD_NAMES.phone;

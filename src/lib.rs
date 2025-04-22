@@ -1,5 +1,5 @@
 pub mod app;
-pub mod utils_and_structs;
+pub mod utils;
 pub mod pages;
 pub mod components;
 

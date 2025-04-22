@@ -32,7 +32,8 @@ leptos-use = {version = "0.16.0-beta", default-features = false, features = ["us
 serde-wasm-bindgen = "0.6"
 icondata = { version = "0.5.0", default-features = false, features = ["lucide"]}
 leptos_icons = { git = "https://github.com/DotRed108/leptos-icons.git" }
-aws-config = {version = "1.1.9", features = ["rustls"], optional = true}
+aws-config = { version = "1.1.9", features = ["rustls"], optional = true }
+aws-sdk-s3 = { version = "1.82.0", optional = true }
 aws-sdk-dynamodb = {version = "1.71.0", optional = true}
 serde_dynamo = {version = "4.2.14", features = ["aws-sdk-dynamodb+1"], optional = true}
 axum-server = { version = "0.7.2", optional = true, features = ["tls-rustls"] }
@@ -40,12 +41,17 @@ rustls = { version = "0.23.26", features = ["ring"], optional = true }
 dotenvy = "0.15.7"
 reqwest = {version = "0.12.15", default-features = false, optional = true, features = ["json", "rustls-tls"]}
 tower-cookies = { version = "0.11.0", optional = true }
+tower_governor = { version = "0.7.0", optional = true }
+indexed-db = {version = "0.4.2", optional = true }
+server_fn = {version = "0.8.0-beta", default-features = false, features = ["browser", "rustls"]}
+futures = "0.3.31"
 
 [features]
 default = ["hydrate", "ssr"]
-hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen", "dep:web-sys",]
+hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen", "dep:web-sys", "dep:indexed-db",]
 ssr = [
     "dep:aws-config",
+    "dep:aws-sdk-s3",
     "dep:aws-sdk-dynamodb",
     "dep:serde_dynamo",
     "dep:axum",
@@ -55,6 +61,7 @@ ssr = [
     "dep:rustls",
     "dep:reqwest",
     "dep:tower-cookies",
+    "dep:tower_governor",
     "leptos/ssr",
     "leptos/rustls",
     "leptos_meta/ssr",

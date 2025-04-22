@@ -1,11 +1,23 @@
 use::core::str::FromStr;
+use leptos::server;
 // use std::{future::Future, pin::Pin, task::{Context, Poll}};
 use partial_derive::Partial;
+use server_fn::ServerFnError;
 use struct_field_names::StructFieldNames;
 use strum::{Display, EnumIter, IntoEnumIterator};
 use serde::{Deserialize, Serialize};
 
-use super::database_types::{Asset, DeckList};
+use crate::utils::{
+    database_types::{Asset, DeckList},
+    outcomes::Outcome, proceed,
+    auth_client::AuthClient,
+};
+/// Server Imports
+#[cfg(feature="ssr")]
+use crate::utils::{
+    dynamo_utils::{get_user, permission_if_good_standing, setup_client},
+    back_utils::verify_user_header,
+};
 
 #[derive(Partial)]
 #[derive(Clone, Debug, Default, PartialEq, StructFieldNames, Serialize, Deserialize)]
@@ -189,4 +201,23 @@ impl FromStr for Rank {
         }
         Err(())
     }
+}
+
+#[server(client=AuthClient)]
+pub async fn user_from_dynamo() -> Result<Outcome, ServerFnError> {
+    let Outcome::VerificationSuccess(email) = verify_user_header().await else {return Ok(Outcome::VerificationFailure)};
+
+    let client = setup_client().await;
+
+    let user = match get_user(&client, &email, None).await {
+        Outcome::UserFound(user) => user,
+        any_other_outcome => return Ok(any_other_outcome),
+    };
+
+    match permission_if_good_standing(&user) {
+        Outcome::PermissionGranted(_) => proceed(),
+        any_other_outcome => return Ok(any_other_outcome),
+    };
+
+    Ok(Outcome::UserFound(user))
 }

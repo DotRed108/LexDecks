@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use crate::components::calendar::Calendar;
 use crate::components::message_box::MessageBox;
 use crate::components::study_window::{StudyWindow, StudyType};
-use crate::utils_and_structs::database_types::{DeckId, DeckList};
+use crate::utils::database_types::{DeckId, DeckList};
 
 /// Renders the home page of your application.
 #[component]

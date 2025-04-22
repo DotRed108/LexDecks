@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use leptos::{either::EitherOf4 as Either, prelude::*};
 
-use crate::utils_and_structs::ui::{Color, Shadow};
+use crate::utils::ui::{Color, Shadow};
 
 #[component]
 pub fn Button(config: ButtonConfig) -> impl IntoView {

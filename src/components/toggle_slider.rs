@@ -1,6 +1,6 @@
 use leptos::{html::Input, prelude::*};
 
-use crate::utils_and_structs::ui::Color;
+use crate::utils::ui::Color;
 
 #[component]
 pub fn SlideToggleCheckbox(#[prop(optional)] checkbox_ref: NodeRef<Input>, #[prop(default = "remember".into())] action_form_name: String) -> impl IntoView {

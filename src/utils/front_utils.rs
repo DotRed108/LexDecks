@@ -1,7 +1,7 @@
 use super::database_types::DeckList;
 use super::date_and_time::current_time_in_seconds;
 use super::outcomes::Outcome;
-use super::queries::ValidQueryTypes;
+use super::query::ValidQueryTypes;
 use super::shared_truth::{MAX_LEVELS, S3_CREATION_DATE_URL_PARAM, S3_EXPIRATION_URL_PARAM};
 use leptos::logging::debug_warn;
 use web_sys::{self, window, Element, HtmlImageElement};

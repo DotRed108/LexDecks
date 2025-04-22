@@ -1,7 +1,7 @@
 use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
-use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils_and_structs::{ outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_token_cookie, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils::{ outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_token_cookie, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
-use crate::utils_and_structs::date_and_time::current_time_in_seconds;
+use crate::utils::date_and_time::current_time_in_seconds;
 
 
 #[component]
@@ -411,11 +411,11 @@ fn handle_sign_in(outcome: Outcome, user_action: Action<UpdateUserState, UserSta
         Outcome::UserOnlyHasRefreshToken(tokens) => tokens,
         #[cfg(not(feature="ssr"))]
         Outcome::AlreadySignedIn => {
-            let refresh_token = crate::utils_and_structs::front_utils::get_cookie_value_client(LOCAL_REFRESH_TOKEN_KEY).unwrap_or_default();
+            let refresh_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_REFRESH_TOKEN_KEY).unwrap_or_default();
             if verify_token(&refresh_token).is_ok() {
                 store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &refresh_token).unwrap_or_default();
             };
-            let auth_token = crate::utils_and_structs::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default();
+            let auth_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default();
             if verify_token(&auth_token).is_ok() {
                 store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &auth_token).unwrap_or_default();
             };
@@ -451,7 +451,7 @@ use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
 #[cfg(feature = "ssr")]
 use serde_dynamo::to_item;
 #[cfg(feature = "ssr")]
-use crate::utils_and_structs::{
+use crate::utils::{
     dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_and_return_rank},
     back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 

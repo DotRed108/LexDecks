@@ -1,6 +1,6 @@
 use pasetors::keys::{AsymmetricKeyPair, Generate};
 use pasetors::version4::V4;
-use lex_decks::utils_and_structs::back_utils::PasetoPrivateKey;
+use lex_decks::utils::back_utils::PasetoPrivateKey;
 
 
 fn main() {
