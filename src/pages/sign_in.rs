@@ -1,4 +1,4 @@
-use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
+use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
 use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils::{ outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_token_cookie, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
 use serde::{Deserialize, Serialize};
 use crate::utils::date_and_time::current_time_in_seconds;
@@ -421,13 +421,15 @@ fn handle_sign_in(outcome: Outcome, user_action: Action<UpdateUserState, UserSta
     };
 
     let auth_successful = if verify_token(&tokens.get_auth_token()).is_ok() {
-        set_token_cookie(&tokens.get_auth_token()).is_ok() || store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok()
+        let stored_locally = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
+        set_token_cookie(&tokens.get_auth_token()).is_ok() || stored_locally
     } else {
         false
     };
 
     let refresh_successful = if verify_token(&tokens.get_refresh_token()).is_ok() {
-        set_token_cookie(&tokens.get_refresh_token()).is_ok() || store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok()
+        let stored_locally = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
+        set_token_cookie(&tokens.get_refresh_token()).is_ok() || stored_locally
     } else {
         false
     };

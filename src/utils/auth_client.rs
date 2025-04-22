@@ -32,23 +32,21 @@ where
         <BrowserClient as Client<E>>::send(req)
     }
 
-    fn open_websocket(path: &str,) -> impl Future<Output = Result<
+    fn spawn(future: impl Future<Output = ()> + Send + 'static) {
+        <BrowserClient as Client<E>>::spawn(future)
+    }
+    
+    fn open_websocket(
+        path: &str,
+    ) -> impl Future<
+        Output = Result<
             (
-                impl futures::Stream<
-                        Item = Result<server_fn::Bytes, E>,
-                    > + Send
-                    + 'static,
-                impl futures::Sink<Result<server_fn::Bytes, E>>
-                    + Send
-                    + 'static,
+                impl futures::Stream<Item = Result<server_fn::Bytes, server_fn::Bytes>> + Send + 'static,
+                impl futures::Sink<Result<server_fn::Bytes, server_fn::Bytes>> + Send + 'static,
             ),
             E,
         >,
     > + Send {
         <BrowserClient as Client<E>>::open_websocket(path)
-    }
-
-    fn spawn(future: impl Future<Output = ()> + Send + 'static) {
-        <BrowserClient as Client<E>>::spawn(future)
     }
 }
