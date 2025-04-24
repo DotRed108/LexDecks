@@ -6,7 +6,7 @@ use leptos_router::{
 
 use crate::{
     components::navbar::NavBar, 
-    pages::{home::Home, not_found::NotFound, sign_in::SignInPage, test::Test, sign_out::SignOut}, 
+    pages::{home::Home, not_found::NotFound, sign_in::SignIn, test::Test, sign_out::SignOut}, 
     utils::user_types::setup_user
 };
 
@@ -43,7 +43,7 @@ pub fn App() -> impl IntoView {
             <NavBar/>
             <Routes fallback=|| NotFound>
                 <Route path=StaticSegment("") view=Home/>
-                <Route path=StaticSegment("/sign-in") view=SignInPage/>
+                <Route path=StaticSegment("/sign-in") view=SignIn/>
                 <Route path=StaticSegment("/sign-out") view=SignOut/>
                 <Route path=StaticSegment("/test") view=Test/>
             </Routes>

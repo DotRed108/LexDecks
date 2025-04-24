@@ -1,5 +1,4 @@
 use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
-use leptos_router::hooks::use_location;
 use crate::{
     components::{button::{Button, ButtonConfig, ButtonType}, 
     message_box::MessageBox, 
@@ -9,17 +8,10 @@ use crate::{
         proceed, 
         shared_truth::{FULL_LOGO_PATH, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, 
         ui::{Color, Shadow},
-        user_types::{sign_out, UserState},
+        user_types::UserState,
     }
 };
 use serde::{Deserialize, Serialize};
-
-#[component]
-pub fn SignInPage() -> impl IntoView {
-    view! {
-        <SignIn/>
-    }
-}
 
 #[component]
 pub fn SignIn() -> impl IntoView {
@@ -32,12 +24,6 @@ pub fn SignIn() -> impl IntoView {
 
     let name_input_ref = NodeRef::new();
     let email_input_ref = NodeRef::new();
-
-    let path = use_location().pathname;
-    let is_sign_out = path.get_untracked().contains("sign-out");
-    if is_sign_out {
-        sign_out(user_state, user_resource)
-    }
 
     Effect::new(move || {
         match email_input_ref.get() {
@@ -245,11 +231,6 @@ pub fn SignIn() -> impl IntoView {
         match outcome {
             Outcome::UnresolvedOutcome => {
                 response.set(None);
-                if is_sign_out {
-                    subject.set("You have been successfully signed out".into());
-                    urgent.set(false);
-                    message.set(String::new());
-                }
             },
             Outcome::UserSignedIn(_) => {
                 subject.set("You have been signed in. Continue to the home page.".into());
@@ -315,13 +296,9 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::RefreshTokenFailure(_) => {
-                if is_sign_out {
-                    sign_out(user_state, user_resource);
-                } else {
-                    let new_state = UserState::replace_outcome(user_state.get_untracked(), Outcome::UnresolvedOutcome);
-                    user_resource.set(Some(new_state.clone()));
-                    user_state.update_untracked(move |last_user_state| *last_user_state = new_state);
-                }
+                let new_state = UserState::replace_outcome(user_state.get_untracked(), Outcome::UnresolvedOutcome);
+                user_resource.set(Some(new_state.clone()));
+                user_state.update_untracked(move |last_user_state| *last_user_state = new_state);
             },
             any_other_outcome => {
                 subject.set(any_other_outcome.to_string());
