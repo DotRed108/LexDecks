@@ -11,7 +11,7 @@ use crate::{
 
 #[component]
 pub fn NavBar() -> impl IntoView {
-    let user_state = expect_context::<MappedSignal<Option<UserState>>>();
+    let user_resource = expect_context::<Resource<UserState>>();
     // tuple is (name, link)
     let navbar = [("Home", "/"), ("Create Deck", "/create-deck"), ("Import Deck", "#"), ("Search", "#")];
 
@@ -39,8 +39,8 @@ pub fn NavBar() -> impl IntoView {
             <nav class="navbar">
                 <a class="logo-navigator" href="/"><img class="nav-logo" src=LOGO_PATH alt="lex logo"/></a>
                 <ol class = "navlist">
-                    <Suspense fallback=no_auth_navlist>
-                    <Show when=move || {user_state.get().unwrap_or_default().is_authenticated()} fallback=no_auth_navlist>
+                    <Transition fallback=no_auth_navlist>
+                    <Show when=move || {user_resource.get().unwrap_or_default().is_authenticated()} fallback=no_auth_navlist>
                     {navbar.into_iter().map(|(name, link)| 
                         view! {
                             <li class={format!("navlist-element {}-nav", name.to_lowercase())}>
@@ -49,13 +49,13 @@ pub fn NavBar() -> impl IntoView {
                         }
                     ).collect_view()}
                     </Show>
-                    </Suspense>
+                    </Transition>
                 </ol>
-                <Suspense fallback=sign_in_button>
-                <Show when=move || {user_state.get().unwrap_or_default().is_authenticated()} fallback=sign_in_button>
+                <Transition fallback=sign_in_button>
+                <Show when=move || {user_resource.get().unwrap_or_default().is_authenticated()} fallback=sign_in_button>
                     <ThisUserAvatar/>
                 </Show>
-                </Suspense>
+                </Transition>
             </nav>
         </header>
     }

@@ -6,7 +6,7 @@ use crate::utils::{
     database_types::{Asset, DBItem, DeckList, Note, NoteList, UpdateRecipe, UpdateRecipes, UpdateType, UpdateValues}, 
     outcomes::Outcome, proceed, query::{query_dynamo, ValidQueryTypes}, 
     shared_truth::{LOCAL_USER_INFO_KEY, CACHE_STATUS_COOKIE_KEY},
-    shared_utilities::{store_item_in_local_storage, get_cookie_value},
+    shared_utilities::{store_item_in_local_storage, get_cookie_value, clear_user_cache_and_cookies},
     user_types::{user_from_dynamo, UserInfo, UserState},
     asset::asset_from_s3,
 };
@@ -59,10 +59,8 @@ pub async fn retrieve_notes(query: ValidQueryTypes, all_user_decks: DeckList, us
 }
 
 pub async fn get_user_info(user_state: UserState) -> UserInfo {
-    debug_warn!("get user info called");
 
     if !!!user_state.is_authenticated() {
-        debug_warn!("cannot get user info because user is not authenticated");
         return UserInfo::default();
     };
 
@@ -76,18 +74,18 @@ pub async fn get_user_info(user_state: UserState) -> UserInfo {
         Outcome::UserFound(user) => {
             #[cfg(feature="hydrate")]
             match store_item_in_local_storage(LOCAL_USER_INFO_KEY, &user.to_string()) {
-                Ok(_) => debug_warn!("user info successfully cached"),
+                Ok(_) => proceed(),
                 Err(_) => {
                     match clear_cache(LOCAL_USER_INFO_KEY) {
                         Ok(_) => proceed(),
                         Err(_) => proceed(),
                     }
-                    debug_warn!("user info could not be cached")
                 },
             }
             user
         },
-        _any_other_outcome => {debug_warn!("{}", _any_other_outcome.to_string()); return UserInfo::default()},
+        Outcome::UserNotFound => {clear_user_cache_and_cookies(); return UserInfo::default()},
+        _any_other_outcome => {return UserInfo::default()},
     };
     debug_warn!("{}", user.to_string());
     user

@@ -1,5 +1,5 @@
 use::core::str::FromStr;
-use leptos::prelude::*;
+use leptos::{leptos_dom::logging::console_log, prelude::*};
 // use std::{future::Future, pin::Pin, task::{Context, Poll}};
 use partial_derive::Partial;
 use server_fn::ServerFnError;
@@ -249,7 +249,19 @@ impl UserState {
         UserState::default()
     }
 
-    pub async fn find_token_or_default() -> Self {
+    pub async fn find_token_or_default(user_state: RwSignal<UserState>) -> Self {
+        match user_state.get_untracked().sign_in_outcome {
+            Outcome::Waiting => match get_cache_status().await {
+                CacheStatus::Complete(as_of_date) => {
+                    if as_of_date > (current_time_in_seconds() - CACHE_OUT_OF_DATE_LIMIT) {
+                        user_state.set(UserState::default());
+                        return UserState::default()
+                    }
+                },
+                _ => proceed(),
+            },
+            _any_other_outcome => proceed(),
+        }
         let mut token_pair = TokenPair::default();
         let mut sign_in_outcome = Outcome::UnresolvedOutcome;
         // Check cookie
@@ -295,6 +307,7 @@ impl UserState {
                 }
             }
         }
+        console_log(&format!("{}", sign_in_outcome.to_string()));
         // Check for refresh token in cookie then use it to get an auth token
         if token_pair.get_auth_token().is_empty() || token_pair.get_refresh_token().is_empty() {
             let cookie_refresh_token = get_cookie_value(LOCAL_REFRESH_TOKEN_KEY).await.unwrap_or_default();
@@ -306,7 +319,12 @@ impl UserState {
                 };
                 match cookie_refresh_outcome {
                     Outcome::TokensRefreshed(tokens) => token_pair = tokens,
-                    _any_other_outcome => sign_in_outcome = Outcome::RefreshTokenFailure("Could not refresh token".into()),
+                    _any_other_outcome => {
+                        sign_in_outcome = match sign_in_outcome {
+                            Outcome::UnresolvedOutcome => Outcome::RefreshTokenFailure("Could not refresh token".into()),
+                            any_other_outcome => any_other_outcome,
+                        };
+                    },
                 }
             }
         }
@@ -321,7 +339,12 @@ impl UserState {
                 };
                 match local_storage_refresh_outcome {
                     Outcome::TokensRefreshed(tokens) => token_pair = tokens,
-                    _any_other_outcome => sign_in_outcome = Outcome::RefreshTokenFailure("Could not refresh token".into()),
+                    _any_other_outcome => {
+                        sign_in_outcome = match sign_in_outcome {
+                            Outcome::UnresolvedOutcome => Outcome::RefreshTokenFailure("Could not refresh token".into()),
+                            any_other_outcome => any_other_outcome,
+                        };
+                    },
                 }
             }
         }
@@ -341,39 +364,104 @@ impl UserState {
             false
         };
 
+        console_log(&format!("{}", sign_in_outcome.to_string()));
+
         if auth_successful {
-            let mut user_state = UserState::from_token_or_default(&token_pair.get_auth_token());
-            user_state.sign_in_outcome = Outcome::UserSignedIn(token_pair);
-            return user_state
+            let mut user_resource = UserState::from_token_or_default(&token_pair.get_auth_token());
+            user_resource.sign_in_outcome = Outcome::UserSignedIn(token_pair);
+            user_state.set(user_resource.clone());
+            return user_resource
         } else {
-            let mut user_state = UserState::default();
-            user_state.sign_in_outcome = sign_in_outcome;
-            return user_state
+            let mut user_resource = UserState::default();
+            user_resource.sign_in_outcome = sign_in_outcome;
+            console_log(&format!("{}", user_resource.sign_in_outcome.to_string()));
+            user_state.set(user_resource.clone());
+            return user_resource
         }
+    }
+
+    pub fn replace_outcome(state: Self, outcome: Outcome) -> Self {
+        let mut user_state = state;
+        user_state.sign_in_outcome = outcome;
+        user_state
     }
 
     pub fn initial_state() -> Self {
-        #[cfg(feature="ssr")]
-        let (cache_status, auth_cookie) = tokio::task::block_in_place(|| {
-            (tokio::runtime::Handle::current().block_on(get_cache_status()),
-            tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default())
-        });
-        #[cfg(not(feature="ssr"))]
-        let (cache_status, auth_cookie) = (get_cache_status_client(), super::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default());
-        let client_offset = 0;
-        #[cfg(not(feature="ssr"))]
-        let client_offset = 100;
-
-        match cache_status {
-            CacheStatus::Complete(as_of_date) => {
-                if as_of_date > (current_time_in_seconds() - CACHE_OUT_OF_DATE_LIMIT) - client_offset {
-                    return UserState::default()
-                }
-            },
-            _ => proceed(),
-        }
-        UserState::from_token_or_default(&auth_cookie)
+        let mut init_state = UserState::default();
+        init_state.sign_in_outcome = Outcome::Waiting;
+        init_state
     }
+    // pub fn initial_state() -> Self {
+    //     #[cfg(feature="ssr")]
+    //     let (cache_status, auth_cookie) = tokio::task::block_in_place(|| {
+    //         (tokio::runtime::Handle::current().block_on(get_cache_status()),
+    //         tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default())
+    //     });
+    //     #[cfg(not(feature="ssr"))]
+    //     let (cache_status, auth_cookie) = (get_cache_status_client(), super::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default());
+    //     let client_offset = 0;
+    //     #[cfg(not(feature="ssr"))]
+    //     let client_offset = 1;
+
+    //     match cache_status {
+    //         CacheStatus::Complete(as_of_date) => {
+    //             if as_of_date > (current_time_in_seconds() - CACHE_OUT_OF_DATE_LIMIT) - client_offset {
+    //                 return UserState::default()
+    //             }
+    //         },
+    //         _ => proceed(),
+    //     }
+    //     let user_state = UserState::from_token_or_default(&auth_cookie);
+    //     if user_state == UserState::default() {
+    //         #[cfg(feature="ssr")]
+    //         let (sign_up_token, refresh_token, auth_token) = tokio::task::block_in_place(|| {
+    //             tokio::runtime::Handle::current().block_on(
+    //                 async {(
+    //                     get_url_query(USER_CLAIM_SIGN_UP).await, 
+    //                     get_url_query(USER_CLAIM_REFRESH).await, 
+    //                     get_url_query(USER_CLAIM_AUTH).await
+    //                 )}
+    //             )
+    //         });
+    //         #[cfg(not(feature="ssr"))]
+    //         let (sign_up_token, refresh_token, auth_token) = (
+    //             get_url_query_client(USER_CLAIM_SIGN_UP), 
+    //             get_url_query_client(USER_CLAIM_REFRESH), 
+    //             get_url_query_client(USER_CLAIM_AUTH)
+    //         );
+
+
+    //         match refresh_token {
+    //             Some(token) => set_token_cookie(&token).unwrap_or_default(),
+    //             None => proceed(),
+    //         }
+    //         match sign_up_token {
+    //             Some(token) => {
+    //                 let user_creation_result = tokio::task::block_in_place(|| {
+    //                     tokio::runtime::Handle::current().block_on(create_user(token))
+    //                 });
+    //                 match user_creation_result.unwrap_or_default() {
+    //                     Outcome::UserCreationSuccess(tokens) => {
+    //                         set_token_cookie(&tokens.get_auth_token());
+    //                         set_token_cookie(&tokens.get_refresh_token());
+    //                     },
+    //                     any_other_outcome => {
+    //                         let mut user_state = UserState::default();
+    //                         user_state.sign_in_outcome = any_other_outcome;
+    //                         return 
+    //                     }
+    //                 }
+    //             },
+    //             None => match auth_token {
+    //                 Some(_) => todo!(),
+    //                 None => todo!(),
+    //             },
+    //         }
+    //         return user_state;
+    //     } else {
+    //         return user_state
+    //     }
+    // }
 
     pub fn user(&self) -> &str {
         return &self.user;
@@ -409,23 +497,23 @@ pub async fn user_from_dynamo(email: Option<String>) -> Result<Outcome, ServerFn
 }
 
 pub fn setup_user() {
-    let user_action = Action::new_with_value(Some(UserState::initial_state()),
-        |_: &bool| UserState::find_token_or_default()
-    );
-    let user_state = user_action.value();
+    // let user_action = Action::new_with_value(Some(UserState::initial_state()),
+    //     |_: &bool| UserState::find_token_or_default()
+    // );
+    // let user_state = user_action.value();
+    let user_state = RwSignal::new(UserState::default());
+    let user_resource = Resource::new_blocking(|| (), move |_| UserState::find_token_or_default(user_state));
     provide_context(user_state);
-
+    provide_context(user_resource);
 
     let user_info = Resource::new(
-        move || user_action.value().get().unwrap_or_default(),
+        move || {user_state.get()},
         |user_state| get_user_info(user_state)
     );
     provide_context(user_info);
 
     Effect::new(move || {
-        if !!!user_state.get_untracked().unwrap_or_default().is_authenticated() {
-            user_action.dispatch(true);
-        }
+        user_resource.refetch();
     });
     // Effect::new(move || {
     //     if user_action.version().get() == 0 {
@@ -453,6 +541,7 @@ pub fn setup_user() {
 
 #[server]
 async fn create_user(token: String) -> Result<Outcome, ServerFnError> {
+    println!("create user");
     let Ok(trusted_token) = verify_token(&token) else {return Ok(Outcome::VerificationFailure)};
 
     let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {

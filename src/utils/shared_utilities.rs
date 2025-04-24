@@ -4,6 +4,8 @@ use std::{collections::HashMap, future::Future, str::FromStr};
 use leptos::logging::debug_warn;
 #[cfg(not(feature = "ssr"))]
 use web_sys::window;
+#[cfg(not(feature = "ssr"))]
+use crate::utils::cache::clear_cache;
 
 use crate::utils::{
     database_types::DeckId,
@@ -13,7 +15,7 @@ use crate::utils::{
     sign_in_lib::TokenPair,
 };
 
-use leptos::{leptos_dom::logging::console_log, prelude::{RwSignal, Set}};
+use leptos::prelude::{RwSignal, Set};
 use pasetors::{errors::{ClaimValidationError, Error}, keys::AsymmetricPublicKey, token::{TrustedToken, UntrustedToken}, version4::{self, V4}, Public};
 
 #[allow(unused)]
@@ -227,7 +229,31 @@ pub fn set_token_cookie(token: &str) -> Result<(), ()> {
 }
 
 pub fn set_cookie_value(name: &str, value: &str, expiration: u64) -> Result<(), ()> {
-    let cookie_string = format!("{name}={value}; Path=/; Max-age={expiration}; Secure=true; SameSite=Strict;");
+    let cookie_string = format!("{name}={value}; Path=/; Max-age={expiration}; Secure=true; SameSite=Lax;");
+    #[cfg(not(feature = "ssr"))]
+    {
+        use leptos::web_sys::wasm_bindgen::JsCast;
+        let Ok(html_document) = leptos::prelude::document().dyn_into::<leptos::web_sys::HtmlDocument>() else {return Err(())};
+        _ = html_document.set_cookie(&cookie_string);
+        return Ok(());
+    }
+
+    #[cfg(feature = "ssr")]
+    {
+        let res = leptos::prelude::expect_context::<leptos_axum::ResponseOptions>();
+        let header_value = axum::http::HeaderValue::from_str(&cookie_string);
+
+        if let Ok(header_value) = header_value {
+            res.append_header(axum::http::header::SET_COOKIE, header_value);
+            return Ok(());
+        } else {
+            return Err(());
+        }
+    }
+}
+
+pub fn clear_cookie(name: &str) -> Result<(), ()> {
+    let cookie_string = format!("{name}=\"\"; Path=/; Max-age=-9999; Secure=true; SameSite=Lax; expires=Thu, 01 Jan 1970 00:00:01 GMT;");
     #[cfg(not(feature = "ssr"))]
     {
         use leptos::web_sys::wasm_bindgen::JsCast;
@@ -264,6 +290,17 @@ pub async fn get_cookie_value(name: &str) -> Option<String> {
         let Some(cookie) = cookie else {return None};
         Some(cookie.value_trimmed().to_string())
     }
+}
+
+pub fn clear_user_cache_and_cookies() {
+    #[cfg(not(feature="ssr"))]
+    {
+        let _ = clear_cache(LOCAL_USER_INFO_KEY);
+        let _ = clear_cache(LOCAL_AUTH_TOKEN_KEY);
+        let _ = clear_cache(LOCAL_REFRESH_TOKEN_KEY);
+    }
+    let _ = clear_cookie(LOCAL_AUTH_TOKEN_KEY);
+    let _ = clear_cookie(LOCAL_REFRESH_TOKEN_KEY);
 }
 
 pub fn get_fake_review_schedule(_deck_id: DeckId) -> (HashMap<PartialDate, usize>, usize) {
@@ -309,8 +346,24 @@ pub async fn get_url_query(query_key: &str) -> Option<String> {
 
     for (key, value) in url.query_pairs() {
         if query_key == key {
-            console_log(&value);
             return Some(value.to_string())
+        }
+    }
+    None
+}
+
+#[allow(unused_variables)]
+pub fn get_url_query_client(query_key: &str) -> Option<String> {
+    #[cfg(not(feature="ssr"))]
+    {
+        let url = window().unwrap().location().href().unwrap_or_default();
+
+        let url = url::Url::from_str(&url).unwrap();
+
+        for (key, value) in url.query_pairs() {
+            if query_key == key {
+                return Some(value.to_string())
+            }
         }
     }
     None

@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 
 #[component]
 pub fn SignIn() -> impl IntoView {
-    let user_state = expect_context::<MappedSignal<Option<UserState>>>();
+    let user_resource = expect_context::<Resource<UserState>>();
+    let user_state = expect_context::<RwSignal<UserState>>();
 
     let subject = RwSignal::new(String::new());
     let urgent = RwSignal::new(false);
@@ -222,18 +223,15 @@ pub fn SignIn() -> impl IntoView {
 
     let go_back = move |_| {
         response.set(None);
-        let mut new_user_state = user_state.get_untracked().unwrap_or_default();
-        new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
-        user_state.set(Some(new_user_state))
+        let new_state = UserState::replace_outcome(user_state.get_untracked(), Outcome::UnresolvedOutcome);
+        user_resource.set(Some(new_state.clone()));
+        user_state.update_untracked(move |last_user_state| *last_user_state = new_state);
     };
 
     let display_response = move |outcome: Outcome| {
         match outcome {
             Outcome::UnresolvedOutcome => {
                 response.set(None);
-                let mut new_user_state = user_state.get_untracked().unwrap_or_default();
-                new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
-                user_state.set(Some(new_user_state))
             },
             Outcome::UserSignedIn(_) => {
                 subject.set("You have been signed in. Continue to the home page.".into());
@@ -251,7 +249,7 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::EmailSendSuccess => {
-                subject.set("Check Your Email".into());
+                subject.set("Check your email.".into());
                 urgent.set(false);
                 message.set(String::new());
             },
@@ -261,7 +259,7 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::EmailAlreadyInUse => {
-                subject.set("Email could not be used to sign up as it is already in use. Go back and request a sign in email.".into());
+                subject.set("This email could not be used to sign up as it is already in use. Go back and request a sign in email.".into());
                 urgent.set(true);
                 message.set(String::new());
             },
@@ -272,6 +270,11 @@ pub fn SignIn() -> impl IntoView {
             },
             Outcome::UserSuspended(_date) => {
                 subject.set("This email is associated with a suspended account.".into());
+                urgent.set(true);
+                message.set(String::new());
+            },
+            Outcome::CreateUserFailure(_) => {
+                subject.set("Could not register user. Try again in a bit.".into());
                 urgent.set(true);
                 message.set(String::new());
             },
@@ -289,9 +292,9 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::RefreshTokenFailure(_) => {
-                let mut new_user_state = user_state.get_untracked().unwrap_or_default();
-                new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
-                user_state.set(Some(new_user_state))
+                let new_state = UserState::replace_outcome(user_state.get_untracked(), Outcome::UnresolvedOutcome);
+                user_resource.set(Some(new_state.clone()));
+                user_state.update_untracked(move |last_user_state| *last_user_state = new_state);
             },
             any_other_outcome => {
                 subject.set(any_other_outcome.to_string());
@@ -307,7 +310,7 @@ pub fn SignIn() -> impl IntoView {
             <img src=FULL_LOGO_PATH alt="LexLinguaLogo" class="sign-in-logo"/>
             <Transition fallback=loading_button>
             <Show when=move || !request_email_send.pending().get() fallback=loading_button>{
-                let load_outcome = user_state.get().unwrap_or_default().sign_in_outcome;
+                let load_outcome = user_resource.get().unwrap_or_default().sign_in_outcome;
                 let action_result = response.get();
                 if action_result.is_some() || load_outcome != Outcome::UnresolvedOutcome {
                     let mut outcome = match action_result.unwrap_or(Ok(Outcome::UnresolvedOutcome)) {
