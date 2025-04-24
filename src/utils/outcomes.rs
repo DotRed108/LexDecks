@@ -32,6 +32,7 @@ pub enum Outcome {
     UserSignedIn(TokenPair),
     UserOnlyHasRefreshToken(TokenPair),
     UserNotSignedIn,
+    UserSignedOut,
     TokensRefreshed(TokenPair),
     RefreshTokenFailure(String),
     NoRefreshTokenFound,

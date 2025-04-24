@@ -1,6 +1,5 @@
 use::core::str::FromStr;
 use leptos::{leptos_dom::logging::console_log, prelude::*};
-// use std::{future::Future, pin::Pin, task::{Context, Poll}};
 use partial_derive::Partial;
 use server_fn::ServerFnError;
 use struct_field_names::StructFieldNames;
@@ -14,7 +13,7 @@ use crate::utils::{
     database_types::{Asset, DeckList}, date_and_time::current_time_in_seconds, 
     outcomes::Outcome, proceed, 
     shared_truth::{LOCAL_USER_INFO_KEY, CACHE_OUT_OF_DATE_LIMIT, EMAIL_CLAIM_KEY, EXP_CLAIM_KEY, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, 
-    shared_utilities::{get_claim, get_cookie_value, get_item_from_local_storage, get_url_query, is_expired, set_token_cookie, store_item_in_local_storage, verify_then_return_outcome, verify_token}, 
+    shared_utilities::{clear_user_cache_and_cookies, get_claim, get_cookie_value, get_item_from_local_storage, get_url_query, is_expired, set_token_cookie, store_item_in_local_storage, verify_then_return_outcome, verify_token}, 
     sign_in_lib::{use_refresh_token, TokenPair}
 };
 
@@ -391,77 +390,6 @@ impl UserState {
         init_state.sign_in_outcome = Outcome::Waiting;
         init_state
     }
-    // pub fn initial_state() -> Self {
-    //     #[cfg(feature="ssr")]
-    //     let (cache_status, auth_cookie) = tokio::task::block_in_place(|| {
-    //         (tokio::runtime::Handle::current().block_on(get_cache_status()),
-    //         tokio::runtime::Handle::current().block_on(get_cookie_value(LOCAL_AUTH_TOKEN_KEY)).unwrap_or_default())
-    //     });
-    //     #[cfg(not(feature="ssr"))]
-    //     let (cache_status, auth_cookie) = (get_cache_status_client(), super::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default());
-    //     let client_offset = 0;
-    //     #[cfg(not(feature="ssr"))]
-    //     let client_offset = 1;
-
-    //     match cache_status {
-    //         CacheStatus::Complete(as_of_date) => {
-    //             if as_of_date > (current_time_in_seconds() - CACHE_OUT_OF_DATE_LIMIT) - client_offset {
-    //                 return UserState::default()
-    //             }
-    //         },
-    //         _ => proceed(),
-    //     }
-    //     let user_state = UserState::from_token_or_default(&auth_cookie);
-    //     if user_state == UserState::default() {
-    //         #[cfg(feature="ssr")]
-    //         let (sign_up_token, refresh_token, auth_token) = tokio::task::block_in_place(|| {
-    //             tokio::runtime::Handle::current().block_on(
-    //                 async {(
-    //                     get_url_query(USER_CLAIM_SIGN_UP).await, 
-    //                     get_url_query(USER_CLAIM_REFRESH).await, 
-    //                     get_url_query(USER_CLAIM_AUTH).await
-    //                 )}
-    //             )
-    //         });
-    //         #[cfg(not(feature="ssr"))]
-    //         let (sign_up_token, refresh_token, auth_token) = (
-    //             get_url_query_client(USER_CLAIM_SIGN_UP), 
-    //             get_url_query_client(USER_CLAIM_REFRESH), 
-    //             get_url_query_client(USER_CLAIM_AUTH)
-    //         );
-
-
-    //         match refresh_token {
-    //             Some(token) => set_token_cookie(&token).unwrap_or_default(),
-    //             None => proceed(),
-    //         }
-    //         match sign_up_token {
-    //             Some(token) => {
-    //                 let user_creation_result = tokio::task::block_in_place(|| {
-    //                     tokio::runtime::Handle::current().block_on(create_user(token))
-    //                 });
-    //                 match user_creation_result.unwrap_or_default() {
-    //                     Outcome::UserCreationSuccess(tokens) => {
-    //                         set_token_cookie(&tokens.get_auth_token());
-    //                         set_token_cookie(&tokens.get_refresh_token());
-    //                     },
-    //                     any_other_outcome => {
-    //                         let mut user_state = UserState::default();
-    //                         user_state.sign_in_outcome = any_other_outcome;
-    //                         return 
-    //                     }
-    //                 }
-    //             },
-    //             None => match auth_token {
-    //                 Some(_) => todo!(),
-    //                 None => todo!(),
-    //             },
-    //         }
-    //         return user_state;
-    //     } else {
-    //         return user_state
-    //     }
-    // }
 
     pub fn user(&self) -> &str {
         return &self.user;
@@ -497,10 +425,6 @@ pub async fn user_from_dynamo(email: Option<String>) -> Result<Outcome, ServerFn
 }
 
 pub fn setup_user() {
-    // let user_action = Action::new_with_value(Some(UserState::initial_state()),
-    //     |_: &bool| UserState::find_token_or_default()
-    // );
-    // let user_state = user_action.value();
     let user_state = RwSignal::new(UserState::default());
     let user_resource = Resource::new_blocking(|| (), move |_| UserState::find_token_or_default(user_state));
     provide_context(user_state);
@@ -515,16 +439,6 @@ pub fn setup_user() {
     Effect::new(move || {
         user_resource.refetch();
     });
-    // Effect::new(move || {
-    //     if user_action.version().get() == 0 {
-    //         proceed()
-    //     } else if user_state.get().unwrap_or_default().is_authenticated() {
-    //         return;
-    //     } else if user_action.version().get() > 1 {
-    //         return;
-    //     }
-    //     user_action.dispatch(true);
-    // });
     Effect::new(move || {
         match user_info.get() {
             Some(user_info) => {
@@ -537,6 +451,14 @@ pub fn setup_user() {
             None => proceed(),
         }
     });
+}
+
+pub fn sign_out(user_state: RwSignal<UserState>, user_resource: Resource<UserState>) {
+    let mut sign_out_state = UserState::default();
+    sign_out_state.sign_in_outcome = Outcome::UserSignedOut;
+    clear_user_cache_and_cookies();
+    user_state.set(sign_out_state.clone());
+    user_resource.set(Some(sign_out_state));
 }
 
 #[server]

@@ -295,7 +295,7 @@ pub async fn get_cookie_value(name: &str) -> Option<String> {
 pub fn clear_user_cache_and_cookies() {
     #[cfg(not(feature="ssr"))]
     {
-        let _ = clear_cache(LOCAL_USER_INFO_KEY);
+        let _ = clear_cache(super::shared_truth::LOCAL_USER_INFO_KEY);
         let _ = clear_cache(LOCAL_AUTH_TOKEN_KEY);
         let _ = clear_cache(LOCAL_REFRESH_TOKEN_KEY);
     }
