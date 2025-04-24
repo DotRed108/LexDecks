@@ -14,6 +14,12 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+#[component]
+pub fn SignInPage() -> impl IntoView {
+    view! {
+        <SignIn/>
+    }
+}
 
 #[component]
 pub fn SignIn() -> impl IntoView {
