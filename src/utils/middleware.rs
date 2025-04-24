@@ -2,25 +2,30 @@ use axum::{
     body::Body, extract::Request, http::{HeaderValue, Method, Response}, middleware::Next
 };
 
-use crate::utils::{outcomes::Outcome, shared_truth::{AUTH_TOKEN_HEADER, USER_CLAIM_AUTH}, shared_utilities::verify_token};
+use crate::utils::{outcomes::Outcome, shared_truth::{AUTH_TOKEN_HEADER, USER_CLAIM_AUTH}, shared_utilities::{get_claim, verify_token}};
 
-use super::shared_utilities::excluded_from_auth;
+use super::{proceed, shared_utilities::excluded_from_auth};
 
 pub async fn auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response<Body> {
     if request.method() != Method::GET && !!!excluded_from_auth(request.uri().to_string()) {
+        println!("{}", request.uri().to_string());
         let early_response = Response::builder().status(404).body(Outcome::VerificationFailure.to_string().into()).unwrap_or_default();
         let headers = request.headers_mut();
+        match headers.get(USER_CLAIM_AUTH) {
+            Some(_) => return early_response,
+            None => proceed(),
+        }
         let Some(auth_header) = headers.get(AUTH_TOKEN_HEADER) else {return early_response};
+        println!("auth_header {}", auth_header.to_str().unwrap_or_default());
         let Ok(trusted_token) = verify_token(auth_header.to_str().unwrap_or_default()) else {return early_response};
-        
-        let Some(claims) = trusted_token.payload_claims() else {return early_response};
-        let Some(email) = claims.get_claim(USER_CLAIM_AUTH) else {return early_response};
-        let Some(email) = email.as_str() else {return early_response};
+        println!("trusted token {:?}", trusted_token);
 
-        let Ok(email) = HeaderValue::from_str(email) else {return early_response};
+        let Some(email) = get_claim(&trusted_token, USER_CLAIM_AUTH) else {return early_response};
+
+        let Ok(email) = HeaderValue::from_str(&email) else {return early_response};
 
         headers.append(USER_CLAIM_AUTH, email);
     };

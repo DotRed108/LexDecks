@@ -1,27 +1,26 @@
-use leptos::{either::Either, leptos_dom::logging::console_log, prelude::*, web_sys::HtmlInputElement};
-use crate::{app::UpdateUserState, components::{button::{Button, ButtonConfig, ButtonType}, message_box::MessageBox, toggle_slider::SlideToggleCheckbox}, utils::{ outcomes::Outcome, proceed, shared_truth::{FULL_LOGO_PATH, IS_TRUSTED_CLAIM, LOCAL_AUTH_TOKEN_KEY, LOCAL_REFRESH_TOKEN_KEY, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, shared_utilities::{get_claim, get_cookie_value, get_url_query, set_token_cookie, store_item_in_local_storage, use_refresh_token, verify_token, UserState}, sign_in_lib::TokenPair, ui::{Color, Shadow} }};
+use leptos::{either::Either, prelude::*, web_sys::HtmlInputElement};
+use crate::{
+    components::{button::{Button, ButtonConfig, ButtonType}, 
+    message_box::MessageBox, 
+    toggle_slider::SlideToggleCheckbox}, 
+    utils::{ 
+        outcomes::Outcome, 
+        proceed, 
+        shared_truth::{FULL_LOGO_PATH, MAX_EMAIL_SIZE, USER_CLAIM_AUTH, USER_CLAIM_REFRESH, USER_CLAIM_SIGN_UP}, 
+        ui::{Color, Shadow},
+        user_types::UserState,
+    }
+};
 use serde::{Deserialize, Serialize};
-use crate::utils::date_and_time::current_time_in_seconds;
 
 
 #[component]
 pub fn SignIn() -> impl IntoView {
-    let user_action = expect_context::<Action<UpdateUserState, UserState>>();
+    let user_state = expect_context::<MappedSignal<Option<UserState>>>();
 
     let subject = RwSignal::new(String::new());
     let urgent = RwSignal::new(false);
     let message = RwSignal::new(String::new());
-    
-    let client_outcome = RwSignal::new(Outcome::Waiting);
-    let on_server_load = OnceResource::new_blocking(on_load_server(user_action));
-    
-    Effect::new(move || {
-        client_outcome.set(on_load(
-            on_server_load.get().unwrap_or_default(), 
-            user_action, 
-            user_action.value().get().unwrap_or_default()
-        ));
-    });
 
     let name_input_ref = NodeRef::new();
     let email_input_ref = NodeRef::new();
@@ -223,14 +222,18 @@ pub fn SignIn() -> impl IntoView {
 
     let go_back = move |_| {
         response.set(None);
-        client_outcome.set(Outcome::UnresolvedOutcome);
+        let mut new_user_state = user_state.get_untracked().unwrap_or_default();
+        new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
+        user_state.set(Some(new_user_state))
     };
 
     let display_response = move |outcome: Outcome| {
         match outcome {
             Outcome::UnresolvedOutcome => {
                 response.set(None);
-                client_outcome.set(Outcome::UnresolvedOutcome);
+                let mut new_user_state = user_state.get_untracked().unwrap_or_default();
+                new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
+                user_state.set(Some(new_user_state))
             },
             Outcome::UserSignedIn(_) => {
                 subject.set("You have been signed in. Continue to the home page.".into());
@@ -286,9 +289,9 @@ pub fn SignIn() -> impl IntoView {
                 message.set(String::new());
             },
             Outcome::RefreshTokenFailure(_) => {
-                subject.set("You could not be signed in please go back and get a sign in email".into());
-                urgent.set(true);
-                message.set(String::new());
+                let mut new_user_state = user_state.get_untracked().unwrap_or_default();
+                new_user_state.sign_in_outcome = Outcome::UnresolvedOutcome;
+                user_state.set(Some(new_user_state))
             },
             any_other_outcome => {
                 subject.set(any_other_outcome.to_string());
@@ -304,10 +307,7 @@ pub fn SignIn() -> impl IntoView {
             <img src=FULL_LOGO_PATH alt="LexLinguaLogo" class="sign-in-logo"/>
             <Transition fallback=loading_button>
             <Show when=move || !request_email_send.pending().get() fallback=loading_button>{
-                let load_outcome = match client_outcome.get() {
-                    Outcome::Waiting => on_server_load.get().unwrap_or_default(),
-                    any_other_outcome => any_other_outcome,
-                };
+                let load_outcome = user_state.get().unwrap_or_default().sign_in_outcome;
                 let action_result = response.get();
                 if action_result.is_some() || load_outcome != Outcome::UnresolvedOutcome {
                     let mut outcome = match action_result.unwrap_or(Ok(Outcome::UnresolvedOutcome)) {
@@ -341,129 +341,15 @@ pub fn SignIn() -> impl IntoView {
     }
 }
 
-async fn on_load_server(user_action: Action<UpdateUserState, UserState>) -> Outcome {
-    if user_action.value().get_untracked().unwrap_or_default().is_authenticated() {
-        return Outcome::AlreadySignedIn
-    }
-    #[allow(unused_assignments)]
-    let mut server_outcome = Outcome::UnresolvedOutcome;
-    #[cfg(feature="ssr")]
-    {
-        let sign_up_token = get_url_query(USER_CLAIM_SIGN_UP);
-        
-        let outcome = match sign_up_token {
-            Some(sign_up_token) => create_user(sign_up_token).await.unwrap_or(Outcome::CreateUserFailure("Server failure occured".into())),
-            None => {
-                let refresh_token = match get_url_query(USER_CLAIM_REFRESH) {
-                    Some(refresh_token) => Some(refresh_token),
-                    None => match get_cookie_value(LOCAL_REFRESH_TOKEN_KEY).await {
-                        Some(refresh_token) => Some(refresh_token),
-                        None => None,
-                    }
-                };
-
-                let token_pair = match get_url_query(USER_CLAIM_AUTH) {
-                    Some(auth_token) => Some(TokenPair::new(&refresh_token.unwrap_or_default(), &auth_token)),
-                    None => match refresh_token {
-                        Some(refresh_token) => match use_refresh_token(refresh_token).await {
-                            Ok(outcome) => match outcome {
-                                Outcome::TokensRefreshed(token_pair) => Some(token_pair),
-                                _any_other_outcome => None,
-                            },
-                            Err(_) => None,
-                        },
-                        None => None,
-                    },
-                };
-
-                match token_pair {
-                    Some(token_pair) => Outcome::HoldingTokenPair(token_pair),
-                    None => Outcome::UnresolvedOutcome,
-                }
-            }
-        };
-
-        server_outcome = match outcome.clone() {
-            Outcome::UserCreationSuccess(_) => handle_sign_in(outcome, user_action),
-            Outcome::HoldingTokenPair(_) => handle_sign_in(outcome, user_action),
-            any_other_outcome => any_other_outcome,
-        }
-    }
-    server_outcome
-}
-
-fn on_load(server_load_outcome: Outcome, user_action: Action<UpdateUserState, UserState>, user_state: UserState) -> Outcome {
-    if user_action.version().get() == 0 {
-        proceed()
-    } else if user_state.is_authenticated() {
-        return Outcome::UserSignedIn(TokenPair::default());
-    } else if user_action.version().get() > 1 {
-        return handle_sign_in(server_load_outcome, user_action);
-    }
-    let outcome =  handle_sign_in(server_load_outcome, user_action);
-    user_action.dispatch(UpdateUserState::Fetch);
-    return outcome
-}
-
-fn handle_sign_in(outcome: Outcome, user_action: Action<UpdateUserState, UserState>) -> Outcome {
-    let tokens = match outcome {
-        Outcome::HoldingTokenPair(tokens) => tokens,
-        Outcome::UserCreationSuccess(tokens) => tokens,
-        Outcome::UserSignedIn(tokens) => tokens,
-        Outcome::UserOnlyHasRefreshToken(tokens) => tokens,
-        #[cfg(not(feature="ssr"))]
-        Outcome::AlreadySignedIn => {
-            let refresh_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_REFRESH_TOKEN_KEY).unwrap_or_default();
-            let auth_token = crate::utils::front_utils::get_cookie_value_client(LOCAL_AUTH_TOKEN_KEY).unwrap_or_default();
-            TokenPair::new(&refresh_token, &auth_token)
-        },
-        any_other_outcome => return any_other_outcome,
-    };
-
-    let auth_successful = if verify_token(&tokens.get_auth_token()).is_ok() {
-        let stored_locally = store_item_in_local_storage(LOCAL_AUTH_TOKEN_KEY, &tokens.get_auth_token()).is_ok();
-        set_token_cookie(&tokens.get_auth_token()).is_ok() || stored_locally
-    } else {
-        false
-    };
-
-    let refresh_successful = if verify_token(&tokens.get_refresh_token()).is_ok() {
-        let stored_locally = store_item_in_local_storage(LOCAL_REFRESH_TOKEN_KEY, &tokens.get_refresh_token()).is_ok();
-        set_token_cookie(&tokens.get_refresh_token()).is_ok() || stored_locally
-    } else {
-        false
-    };
-
-    if auth_successful {
-        user_action.version().set(user_action.version().get_untracked() + 1);
-        user_action.value().set(Some(UserState::from_token_or_default(&tokens.get_auth_token())));
-        return Outcome::UserSignedIn(tokens)
-    } else if refresh_successful {
-        return Outcome::UserOnlyHasRefreshToken(tokens)
-    } else {
-        return Outcome::UserNotSignedIn
-    }
-}
-
-
-////// SERVER ONLY /////
-#[cfg(feature = "ssr")]
-use aws_sdk_dynamodb::{Client, operation::put_item::PutItemError};
-#[cfg(feature = "ssr")]
-use serde_dynamo::to_item;
 #[cfg(feature = "ssr")]
 use crate::utils::{
-    dynamo_utils::{setup_client, EMAIL_DB_KEY, validate_user_and_return_rank},
-    back_utils::{get_default_pfp, USERS_TABLE, build_auth_token, build_sign_up_token, build_refresh_token}, 
+    dynamo_utils::{setup_client, validate_user_and_return_rank},
+    back_utils::{build_auth_token, build_sign_up_token, build_refresh_token}, 
     user_types::UserInfo, 
     shared_truth::SIGN_IN_PAGE,
     email_template::{EmailTemplate, EMAIL_FIELD_1, EMAIL_FIELD_1_VALUE, EMAIL_FIELD_2, EMAIL_FIELD_2_VALUE, REDIRECT_LINK},
     shared_utilities::time_till_expiration_pretty,
 };
-
-///////////////////////// HANDLES SIGN UP FORM SUBMISSION //////////////////////////////////////
-/// 
-/// 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SignInUpInputs {
@@ -558,67 +444,4 @@ async fn sign_up_or_in(email_address: &str, sign_up: bool, is_trusted: bool, use
         Err(e) =>  Outcome::EmailSendFailure(e.to_string()),
     };
     outcome
-}
-///////////////////////// HANDLES USER CREATION //////////////////////////////////////
-/// 
-/// 
-
-#[server]
-async fn create_user(token: String) -> Result<Outcome, ServerFnError> {
-    let Ok(trusted_token) = verify_token(&token) else {return Ok(Outcome::VerificationFailure)};
-
-    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
-        Some(claim) => claim.parse().unwrap_or(false),
-        None => false,
-    };
-    let Some(user_email) = get_claim(&trusted_token, USER_CLAIM_SIGN_UP) else {return Ok(Outcome::VerificationFailure)};
-    
-    let dynamo_client = setup_client().await;
-
-    let outcome = add_user_to_db(&dynamo_client, &user_email, trusted_device).await;
-
-    Ok(outcome)
-}
-
-#[cfg(feature = "ssr")]
-async fn add_user_to_db(dynamo_client: &Client, user_email: &str, trusted_device: bool) -> Outcome {
-    let Ok(token_pair) = create_token_pair(user_email, trusted_device).await else {
-        return Outcome::CreateUserFailure("Could not create token pair".to_string());
-    };
-
-    let mut user = UserInfo::default();
-    let current_time = current_time_in_seconds();
-
-
-    user.email = user_email.to_string();
-    user.pfp = get_default_pfp();
-    user.sign_up_date = current_time;
-    user.last_login = current_time;
-    user.lex_name = "Lex".to_string();
-    
-    let item = match to_item(user) {
-        Ok(itm) => {itm},
-        Err(e) => return Outcome::CreateUserFailure(e.to_string()),
-    };
-    
-    match dynamo_client.put_item().table_name(USERS_TABLE).set_item(Some(item))
-    .condition_expression(format!("attribute_not_exists({EMAIL_DB_KEY})")).send().await {
-        Ok(_) => proceed(),
-        Err(e) => {
-            match e.into_service_error() {
-                PutItemError::ConditionalCheckFailedException(_) => return Outcome::EmailAlreadyInUse,
-                error => return Outcome::CreateUserFailure(error.to_string()),
-            }
-        },
-    }
-
-    Outcome::UserCreationSuccess(token_pair)
-}
-
-#[cfg(feature = "ssr")]
-async fn create_token_pair(email_address: &str, trusted_device: bool) -> Result<TokenPair, Error> {
-    let auth_token = build_auth_token(trusted_device, email_address)?;
-    let refresh_token = build_refresh_token(trusted_device, email_address)?;
-
-    Ok(TokenPair::new(&refresh_token, &auth_token))
 }

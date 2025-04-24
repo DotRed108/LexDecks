@@ -2,7 +2,7 @@ use std::{str::FromStr, time::{Duration, SystemTime, UNIX_EPOCH}};
 
 use crate::utils::database_types::{Asset, S3Address};
 use crate::utils::user_types::Standing;
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, Method};
 use pasetors::{claims::{Claims, ClaimsValidationRules}, errors::Error as PasetoError, keys::{AsymmetricPublicKey, AsymmetricSecretKey}, public, token::{TrustedToken, UntrustedToken}, version4::V4, Public};
 use serde::{Deserialize, Serialize};
 use leptos_axum::extract;
@@ -210,14 +210,25 @@ pub fn sleep_server(duration: Duration) {
     });
 }
 
-pub async fn verify_user_header() -> Outcome {
+pub async fn verify_user_header(user: Option<String>) -> Outcome {
+    let method: Method = match extract().await {
+        Ok(method) => method,
+        Err(_) => {println!("doesnt have method"); return Outcome::VerificationFailure},
+    };
+    if method == Method::GET {
+        match user {
+            Some(email) => return Outcome::VerificationSuccess(email.to_string()),
+            None => {println!("method was GET but user wasnt passed to function"); return Outcome::VerificationFailure},
+        }
+    };
+    println!("verifying user header");
     let headers: HeaderMap = match extract().await {
         Ok(hello) => hello,
-        Err(_) => return Outcome::VerificationFailure,
+        Err(_) => {println!("doesnt have headers"); return Outcome::VerificationFailure},
     };
     let email = match headers.get(USER_CLAIM_AUTH) {
         Some(header) => header.to_str().unwrap_or_default(),
-        None => return Outcome::VerificationFailure,
+        None => {println!("doesnt have header"); return Outcome::VerificationFailure},
     };
 
     if email.is_empty() {

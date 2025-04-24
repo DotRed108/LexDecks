@@ -79,8 +79,8 @@ impl EmailTemplate {
                                                     </p>
 
                                                     <a class="button" href="{REDIRECT_LINK}"
-                                                        style="background:{winter3};text-decoration:none !important; box-shadow:{shadow}; border:0.2em solid {winter3}; max-width: 350px; width: 100%; font-weight:600; margin-inline: auto; margin-top:24px; color:#fff; font-size:1.1em;padding:0.3em;display: inline-block;border-radius:3px;">Sign
-                                                        Up</a>
+                                                        style="background:{winter3};text-decoration:none !important; box-shadow:{shadow}; border:0.2em solid {winter3}; max-width: 350px; width: 100%; font-weight:600; margin-inline: auto; margin-top:24px; color:#fff; font-size:1.1em;padding:0.3em;display: inline-block;border-radius:3px;">{BUTTON_TEXT}
+                                                        </a>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -116,7 +116,7 @@ impl EmailTemplate {
             .replace(TEXT_LINE_1, "Your sign up token has been generated.")
             .replace(TEXT_LINE_2, "Clicking the link below will create your account,")
             .replace(TEXT_LINE_3, "If you did not request this email please do not click the link")
-            .replace(BUTTON_TEXT, "Sign In"),
+            .replace(BUTTON_TEXT, "Sign Up"),
             EmailTemplate::SignIn => email_template
             .replace(TITLE_TEXT, "Welcome Back")
             .replace(TEXT_LINE_1, "Your sign in token has been generated.")

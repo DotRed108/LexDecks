@@ -2,7 +2,6 @@ use leptos::either::Either;
 use leptos::{prelude::*, svg};
 use leptos::web_sys::js_sys;
 use leptos_icons::Icon;
-use leptos_use::{use_interval_fn, utils::Pausable};
 
 use crate::utils::date_and_time::ThreeCalendarMonths;
 use crate::utils::shared_utilities::get_fake_review_schedule;
@@ -40,15 +39,16 @@ pub fn Calendar(current_deck: RwSignal<DeckId>) -> impl IntoView {
         current_date
     });
 
-    #[allow(unused)]
-    let Pausable {pause, resume, is_active} = use_interval_fn(move || 
-    {
-        if call_effect.get_untracked() == 0 {
-            call_effect.update_untracked(|k: &mut i32| {*k = 1});
-        } else {
-            call_effect.set(call_effect.get() + 1)
-        }
-    }, 300000);
+    #[cfg(not(feature="ssr"))]
+    set_interval(move || 
+        {
+            if call_effect.get_untracked() == 0 {
+                call_effect.update_untracked(|k: &mut i32| {*k = 1});
+            } else {
+                call_effect.set(call_effect.get() + 1)
+            }
+        }, std::time::Duration::from_secs(60)
+    );
     
     let output_dates = move |date: Date, which_month: CalendarState| {
         view! {

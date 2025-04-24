@@ -18,8 +18,8 @@ use aws_sdk_s3::{presigning::PresigningConfig, Client as S3Client};
 use aws_config::{retry::RetryConfig, BehaviorVersion, Region};
 
 #[server(client=AuthClient)]
-pub async fn asset_from_s3(asset: Asset) -> Result<Outcome, ServerFnError> {
-    let Outcome::VerificationSuccess(email) = verify_user_header().await else {return Ok(Outcome::VerificationFailure)};
+pub async fn asset_from_s3(asset: Asset, email: Option<String>) -> Result<Outcome, ServerFnError> {
+    let Outcome::VerificationSuccess(email) = verify_user_header(email).await else {return Ok(Outcome::VerificationFailure)};
 
     let config = aws_config::defaults(BehaviorVersion::latest()).retry_config(RetryConfig::standard().with_max_attempts(15)).region(Region::new("us-east-2")).load().await;
     let client = S3Client::new(&config);

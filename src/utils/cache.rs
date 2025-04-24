@@ -3,8 +3,8 @@ use crate::utils::{
     outcomes::Outcome, 
     query::ValidQueryTypes, 
     shared_truth::{LOCAL_USER_INFO_KEY, LOCAL_AUTH_TOKEN_KEY},
-    shared_utilities::{get_item_from_local_storage, store_item_in_local_storage, UserState}, 
-    user_types::UserInfo,
+    shared_utilities::{get_item_from_local_storage, store_item_in_local_storage}, 
+    user_types::{UserInfo, UserState},
     cache_db_interface::get_asset,
     front_utils::{s3_url_expired, image_cached},
 };
@@ -207,7 +207,7 @@ pub fn get_user_state_from_cache() -> UserState {
     user_state
 }
 
-pub async fn cache_and_return_asset(cache_key: &str, asset: Asset) -> Option<Asset> {
+pub async fn cache_and_return_asset(cache_key: &str, asset: Asset, user: Option<String>) -> Option<Asset> {
     if asset == Asset::default() {
         return None;
     }
@@ -220,7 +220,7 @@ pub async fn cache_and_return_asset(cache_key: &str, asset: Asset) -> Option<Ass
                     debug_warn!("Original asset could not be parsed");
                     return None;
                 };
-                asset = match get_asset(original_asset.clone()).await {
+                asset = match get_asset(original_asset.clone(), user).await {
                     Outcome::PresignedUrlRetrieved(uri) => {
                         Asset::CachedPFP(original_asset.to_string(), uri)
                     }
@@ -235,7 +235,7 @@ pub async fn cache_and_return_asset(cache_key: &str, asset: Asset) -> Option<Ass
 
             asset
         }
-        any_other_asset => match get_asset(any_other_asset.clone()).await {
+        any_other_asset => match get_asset(any_other_asset.clone(), user).await {
             Outcome::PresignedUrlRetrieved(url) => Asset::CachedPFP(any_other_asset.to_string(), url),
             any_other_outcome => {
                 debug_warn!("asset could not be retrieved {}", any_other_outcome.to_string());

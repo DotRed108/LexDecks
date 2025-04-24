@@ -1,8 +1,13 @@
 use::core::str::FromStr;
+use leptos::prelude::{server, ServerFnError};
 
 use serde::{Deserialize, Serialize};
 
-use super::shared_truth::SEPARATOR;
+use crate::utils::{
+    shared_truth::{SEPARATOR, USER_CLAIM_REFRESH, IS_TRUSTED_CLAIM},
+    outcomes::Outcome,
+    shared_utilities::{verify_token, get_claim}
+};
 
 #[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TokenPair(String, String);
@@ -48,4 +53,27 @@ impl ToString for TokenPair {
     fn to_string(&self) -> String {
         format!("{}{}{}", self.get_refresh_token(), SEPARATOR, self.get_auth_token())
     }
+}
+
+#[server]
+pub async fn use_refresh_token(refresh_token: String) -> Result<Outcome, ServerFnError> {
+    #[cfg(feature="ssr")]
+    use crate::utils::{back_utils::generate_auth_token, dynamo_utils::{setup_client, validate_user_standing}};
+    let Ok(trusted_token) = verify_token(&refresh_token) else {return Ok(Outcome::VerificationFailure)};
+
+    let Some(email) = get_claim(&trusted_token, USER_CLAIM_REFRESH) else {return Ok(Outcome::VerificationFailure)};
+
+    let trusted_device = match get_claim(&trusted_token, IS_TRUSTED_CLAIM) {
+        Some(claim) => claim.parse().unwrap_or(false),
+        None => false,
+    };
+    
+    let client = setup_client().await;
+
+    let outcome = match validate_user_standing(&client, &email).await {
+        Outcome::PermissionGranted(_) => generate_auth_token(&email, &refresh_token, trusted_device),
+        any_other_outcome => return Ok(any_other_outcome),
+    };
+
+    Ok(outcome)
 }

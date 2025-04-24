@@ -31,8 +31,8 @@ use aws_sdk_dynamodb::{types::AttributeValue, Client as DDBClient};
 
 
 #[server(client=AuthClient)]
-pub async fn query_dynamo(query_type: ValidQueryTypes) -> Result<Outcome, ServerFnError> {
-    let Outcome::VerificationSuccess(email) = verify_user_header().await else {return Ok(Outcome::VerificationFailure)};
+pub async fn query_dynamo(query_type: ValidQueryTypes, user: Option<String>) -> Result<Outcome, ServerFnError> {
+    let Outcome::VerificationSuccess(email) = verify_user_header(user).await else {return Ok(Outcome::VerificationFailure)};
     
     let outcome = match query_type {
         ValidQueryTypes::NoQuery => Outcome::InvalidRequest,

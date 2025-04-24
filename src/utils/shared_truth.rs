@@ -17,6 +17,8 @@ pub const MAX_ASSETS_PER_REQUEST: u8 = 25;
 
 // Time
 pub const ONE_MONTH_IN_SECONDS: u64 = 2629800;
+pub const ONE_DAY_IN_SECONDS: u64 = 86400;
+pub const CACHE_OUT_OF_DATE_LIMIT: u64 = ONE_DAY_IN_SECONDS * 5;
 
 // VERIFICATION
 pub const PUBLIC_KEY: [u8; 32] = [224,221,70,136,138,4,23,242,133,57,200,126,219,223,19,130,157,157,198,186,206,254,54,38,191,215,226,51,244,191,74,177];
@@ -44,6 +46,7 @@ pub const SIGN_IN_PAGE: &str = "https://localhost:3000/sign-in";
 pub const LOCAL_AUTH_TOKEN_KEY: &str = "auth-token";
 pub const LOCAL_REFRESH_TOKEN_KEY: &str = "refresh-token";
 pub const LOCAL_USER_INFO_KEY: &str = "user-info";
+pub const CACHE_STATUS_COOKIE_KEY: &str = "cache-status";
 pub const EXP_CLAIM_KEY: &str = "exp";
 pub const EMAIL_CLAIM_KEY: &str = "user";
 

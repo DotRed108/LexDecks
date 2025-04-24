@@ -1,11 +1,17 @@
 use leptos::prelude::*;
 
-use crate::{app::UpdateUserState, components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, utils::{shared_truth::LOGO_PATH, shared_utilities::UserState, ui::Color}};
+use crate::{
+    components::{avatar::ThisUserAvatar, button::{Button, ButtonConfig, ButtonType}}, 
+    utils::{
+        shared_truth::LOGO_PATH, 
+        user_types::UserState,
+        ui::Color
+    }
+};
 
 #[component]
 pub fn NavBar() -> impl IntoView {
-    let user_action = expect_context::<Action<UpdateUserState, UserState>>();
-    let user_state = user_action.value();
+    let user_state = expect_context::<MappedSignal<Option<UserState>>>();
     // tuple is (name, link)
     let navbar = [("Home", "/"), ("Create Deck", "/create-deck"), ("Import Deck", "#"), ("Search", "#")];
 
