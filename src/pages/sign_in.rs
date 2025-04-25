@@ -313,7 +313,8 @@ pub fn SignIn() -> impl IntoView {
         <ActionForm action=request_email_send>
             <img src=FULL_LOGO_PATH alt="LexLinguaLogo" class="sign-in-logo"/>
             <Transition fallback=loading_button>
-            <Show when=move || !request_email_send.pending().get() fallback=loading_button>{
+            <Show when=move || !request_email_send.pending().get() fallback=loading_button>
+            { move || {
                 let load_outcome = user_resource.get().unwrap_or_default().sign_in_outcome;
                 let action_result = response.get();
                 if action_result.is_some() || load_outcome != Outcome::UnresolvedOutcome {
@@ -342,7 +343,8 @@ pub fn SignIn() -> impl IntoView {
                         <SlideToggleCheckbox action_form_name="sign_in_form[remember_me]".into()/>
                     })
                 }
-            }</Show>
+            }}
+            </Show>
             </Transition>
         </ActionForm>
     }
