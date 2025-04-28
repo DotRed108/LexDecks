@@ -44,7 +44,7 @@ where
         Output = Result<
             (
                 impl futures::Stream<Item = Result<server_fn::Bytes, server_fn::Bytes>> + Send + 'static,
-                impl futures::Sink<Result<server_fn::Bytes, server_fn::Bytes>> + Send + 'static,
+                impl futures::Sink<server_fn::Bytes> + Send + 'static,
             ),
             E,
         >,

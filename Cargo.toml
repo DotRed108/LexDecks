@@ -11,13 +11,13 @@ resolver = "2"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8.0-rc2", default-features = false}
+leptos = { version = "0.8.0-rc3", default-features = false}
 web-sys = { version = "0.3.77", features = ["Storage", "HtmlDocument", "HtmlInputElement"], optional = true }
-leptos_router = { version = "0.8.0-rc2" }
+leptos_router = { version = "0.8.0-rc3" }
 axum = { version = "0.8.1", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
-leptos_axum = { version = "0.8.0-rc2", optional = true }
-leptos_meta = { version = "0.8.0-rc2" }
+leptos_axum = { version = "0.8.0-rc3", optional = true }
+leptos_meta = { version = "0.8.0-rc3" }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 wasm-bindgen = { version = "=0.2.100", optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -42,7 +42,7 @@ reqwest = {version = "0.12.15", default-features = false, optional = true, featu
 tower-cookies = { version = "0.11.0", optional = true }
 tower_governor = { version = "0.7.0", optional = true }
 indexed-db = {version = "0.4.2", optional = true }
-server_fn = {version = "0.8.0-rc2", default-features = false, features = ["browser", "rustls"]}
+server_fn = {version = "0.8.0-rc3", default-features = false, features = ["browser", "rustls"]}
 futures = "0.3.31"
 url = "2.5.4"
 
@@ -81,10 +81,10 @@ lto = true
 codegen-units = 1
 panic = "abort"
 
-# [profile.dev]
-# opt-level = 1
-# [profile.dev.package."*"]
-# opt-level = 3
+[profile.dev]
+opt-level = 1
+[profile.dev.package."*"]
+opt-level = 3
 
 
 [package.metadata.leptos]
@@ -149,6 +149,6 @@ lib-default-features = false
 # Optional. Defaults to "release".
 lib-profile-release = "wasm-release"
 
-# [target.x86_64-unknown-linux-gnu]
-# linker = "clang"
-# rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]
