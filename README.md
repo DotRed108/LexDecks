@@ -1,3 +1,8 @@
+# Where I left off
+- Switching pages fast from sign-out to sign-in causes hydration error and other errors
+- I need to either restructure the code or use try_get() on signals in sign in page
+- Fix sign out then start navbar info about issue = https://discord.com/channels/1031524867910148188/1234308989970550834/1362666274194325565
+
 <picture>
     <source srcset="https://raw.githubusercontent.com/leptos-rs/leptos/main/docs/logos/Leptos_logo_Solid_White.svg" media="(prefers-color-scheme: dark)">
     <img src="https://raw.githubusercontent.com/leptos-rs/leptos/main/docs/logos/Leptos_logo_RGB.svg" alt="Leptos Logo">
